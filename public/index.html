@@ -75,6 +75,7 @@ button:disabled { opacity: .5; cursor: default }
 .gaps { display: flex; flex-wrap: wrap; gap: 6px }
 .gaps button { min-height: 32px; padding: 3px 10px; font: 500 14px var(--f-body); letter-spacing: 0; border-color: var(--warn-fg); background: var(--warn-bg); color: var(--warn-fg) }
 .levels { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px }
+@media (min-width: 700px) { .levels { grid-template-columns: repeat(4, 1fr) } }
 .lv { border-radius: 5px; padding: 7px 10px; background: var(--unk-bg); color: var(--unk-fg); display: flex; flex-direction: column; min-width: 0 }
 .lv span { font: 600 12px var(--f-display); letter-spacing: .08em; text-transform: uppercase; opacity: .85 }
 .lv b { font: 700 19px/1.15 var(--f-display) }
@@ -594,7 +595,7 @@ function o5Chart(o, sd, hist) {
   const narrow = W < 520, m = { l: 40, r: narrow ? 58 : 72, t: 16 }, LH = 170, GAP = 30, RH = 60;
   const pw = W - m.l - m.r, xs = LT(addDays(o.date, -5), '05:00'), xe = LT(addDays(o.date, 6), '05:00');
   // Coca at San Sebastián (H1134): its own panel and scale under the Napo, since it runs about 2.5 m lower
-  const o34 = ((hist && hist.lvl34) || []).filter(p => p[0] >= xs && p[0] <= xe), SH = o34.length > 1 ? 58 : 0, S0 = m.t + LH + GAP, H = m.t + LH + GAP + (SH ? SH + GAP : 0) + RH + 26;
+  const o34 = ((hist && hist.lvl34) || []).filter(p => p[0] >= xs && p[0] <= xe), SH = o34.length > 1 ? 58 : 0, S0 = m.t + LH + GAP, H = m.t + LH + GAP + (SH ? SH + GAP : 0) + RH + GAP + RH + 26;
   const X = t => m.l + pw * (t - xs) / (xe - xs);
   const rt = o.s('riverTime'), nowT = isNum(now) && /^\d\d:\d\d$/.test(rt) ? LT(o.date, rt) : LT(o.date, '05:00');
   const obs = ((hist && hist.lvl) || []).filter(p => p[0] >= xs && p[0] <= nowT + 36e5);
@@ -604,20 +605,20 @@ function o5Chart(o, sd, hist) {
   y0 = Math.floor(y0 * 2) / 2; y1 = Math.ceil(y1 * 2) / 2;
   const Y = v => m.t + LH * (1 - (v - y0) / (y1 - y0));
   const path = a => a.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
-  const R0 = m.t + LH + GAP + (SH ? SH + GAP : 0), txt = (x, y, t, st, anc) => '<text x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '"' + (anc ? ' text-anchor="' + anc + '"' : '') + (st ? ' style="' + st + '"' : '') + '>' + t + '</text>';
+  const R0 = m.t + LH + GAP + (SH ? SH + GAP : 0), U0 = R0 + RH + GAP, RB = U0 + RH, txt = (x, y, t, st, anc) => '<text x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '"' + (anc ? ' text-anchor="' + anc + '"' : '') + (st ? ' style="' + st + '"' : '') + '>' + t + '</text>';
   const halo = 'paint-order:stroke;stroke:var(--card);stroke-width:4px;stroke-linejoin:round;';
   let g = '', tl = '';
   for (let v = y0; v <= y1 + 1e-9; v += 0.5) g += '<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + Y(v) + '" y2="' + Y(v) + '" stroke="var(--line)"/>' + txt(m.l - 6, Y(v) + 4, v.toFixed(1), '', 'end');
   // 05:00 separators; each label sits in the middle of its window
   for (let k = -5; k <= 5; k++) {
     const d = addDays(o.date, k), x0 = X(LT(d, '05:00')), xc = X(LT(d));
-    if (k > -5) g += '<line x1="' + x0 + '" x2="' + x0 + '" y1="' + m.t + '" y2="' + (R0 + RH) + '" stroke="var(--line)"/>';
+    if (k > -5) g += '<line x1="' + x0 + '" x2="' + x0 + '" y1="' + m.t + '" y2="' + RB + '" stroke="var(--line)"/>';
     const lab = narrow ? String(Number(d.slice(8))) : k === 0 ? 'Today' : dateFmt(d, { weekday: 'short', day: 'numeric' });
     g += txt(xc, H - 8, lab, (d === sd || k === 0) ? 'fill:var(--ink);font-weight:600' : '', 'middle');
   }
   [[RIVER_HIGH, 'High water 6.0 m'], [RIVER_LOW, 'Low water 4.5 m']].forEach(([v, t]) => { g += '<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + Y(v) + '" y2="' + Y(v) + '" stroke="var(--danger)" stroke-dasharray="4 4" opacity=".7"/>'; tl += txt(m.l + 4, Y(v) - 4, t, 'fill:var(--muted);font-size:11px;' + halo) });
   const xn = X(nowT);
-  g += '<line x1="' + xn + '" x2="' + xn + '" y1="' + m.t + '" y2="' + (R0 + RH) + '" stroke="var(--ink2)" stroke-width="1"/>';
+  g += '<line x1="' + xn + '" x2="' + xn + '" y1="' + m.t + '" y2="' + RB + '" stroke="var(--ink2)" stroke-width="1"/>';
   if (sd) { const t = LT(sd); if (t > nowT && t < xe) g += '<line x1="' + X(t) + '" x2="' + X(t) + '" y1="' + m.t + '" y2="' + (m.t + LH) + '" stroke="var(--ink2)" stroke-dasharray="2 3"/>' + txt(X(t), m.t - 4, 'Launch', 'fill:var(--ink);font-size:11px;font-weight:600', 'middle') }
   // margin of error (low to high) as a band with thin edges, most likely level as the main line
   const hiP = fc.map(r => [X(r[0]), Y(r[2])]), loP = fc.map(r => [X(r[0]), Y(r[1])]), miP = fc.map(r => [X(r[0]), Y(r[3])]);
@@ -660,18 +661,28 @@ function o5Chart(o, sd, hist) {
     const lp = o34[o34.length - 1]; g += '<circle cx="' + X(lp[0]).toFixed(1) + '" cy="' + SY(lp[1]).toFixed(1) + '" r="3.5" fill="var(--ink2)" stroke="var(--card)" stroke-width="1.5"/>' + txt(X(lp[0]) + 7, SY(lp[1]) + 4, fmt(lp[1], 2) + ' m', 'fill:var(--ink2);font-size:11px;font-weight:600;' + halo);
     g += txt(m.l, S0 - 8, narrow ? 'Coca at San Sebastián (H1134), m, observed' : 'Observed, Coca at San Sebastián (H1134), m: river feeding the Napo above Coca', 'fill:var(--ink2);font-size:11px');
   }
-  // rain per 05:00-to-05:00 window: observed at H1135 up to today, forecast at Coca after
-  const rd = {}; (Array.isArray(o.get('rainDays')) ? o.get('rainDays') : []).forEach(d => { if (d && d.date && isNum(d.coca)) rd[d.date] = d.coca });
-  const bars = []; for (let k = -5; k <= 5; k++) { const d = addDays(o.date, k), ob = hist && hist.rain && isNum(hist.rain[d]) ? hist.rain[d] : null; bars.push({ d, k, v: k <= 0 ? ob : (isNum(rd[d]) ? rd[d] : null), f: k > 0 }) }
-  const rtop = Math.max(10, ...bars.map(b => b.v || 0)), rmax = rtop * 1.3, RY = v => R0 + RH * (1 - v / rmax), bw = Math.max(6, pw / 11 * 0.5);
-  g += '<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + (R0 + RH) + '" y2="' + (R0 + RH) + '" stroke="var(--axis)"/>';
-  bars.forEach(b => {
-    if (b.v === null) return; const xc = X(LT(b.d)), h = Math.max(b.v > 0 ? 2 : 0, R0 + RH - RY(b.v));
-    if (h > 0) g += b.f ? '<rect x="' + (xc - bw / 2 + 0.75) + '" y="' + (R0 + RH - h + 0.75) + '" width="' + (bw - 1.5) + '" height="' + Math.max(0, h - 0.75) + '" rx="2" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="3 2"/>' : '<rect x="' + (xc - bw / 2) + '" y="' + (R0 + RH - h) + '" width="' + bw + '" height="' + h + '" rx="2" fill="var(--accent)"/>';
-    if (b.v >= 1) g += txt(xc, R0 + RH - h - 3, fmt(b.v, 0), 'font-size:11px;fill:var(--ink2);' + halo, 'middle');
-  });
-  g += txt(m.l, R0 - 8, narrow ? 'Rain at Coca, mm per 05:00–05:00 day (dashed: forecast)' : 'Rain at Coca, mm per day from 05:00 to 05:00: observed at H1135, forecast dashed', 'fill:var(--ink2);font-size:11px');
-  g += txt(m.l - 6, R0 + RH + 4, '0', '', 'end');
+  // rain per 05:00-to-05:00 window, Coca and upstream on one scale: observed up to today, forecast (dashed) after
+  const rd = {}, ru = {}; (Array.isArray(o.get('rainDays')) ? o.get('rainDays') : []).forEach(d => { if (d && d.date) { if (isNum(d.coca)) rd[d.date] = d.coca; if (isNum(d.up)) ru[d.date] = d.up } });
+  const bars = [], ubars = [];
+  for (let k = -5; k <= 5; k++) {
+    const d = addDays(o.date, k), ob = hist && hist.rain && isNum(hist.rain[d]) ? hist.rain[d] : null, uo = hist && hist.upRain && hist.upRain[d] ? hist.upRain[d].max : null;
+    bars.push({ d, k, v: k <= 0 ? ob : (isNum(rd[d]) ? rd[d] : null), f: k > 0 });
+    ubars.push({ d, k, v: k <= 0 ? (isNum(uo) ? uo : null) : (isNum(ru[d]) ? ru[d] : null), f: k > 0 });
+  }
+  const rtop = Math.max(10, ...bars.map(b => b.v || 0), ...ubars.map(b => b.v || 0)), rmax = rtop * 1.3, bw = Math.max(6, pw / 11 * 0.5);
+  const panel = (P0, list, label) => {
+    const RY = v => P0 + RH * (1 - v / rmax);
+    g += '<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + (P0 + RH) + '" y2="' + (P0 + RH) + '" stroke="var(--axis)"/>';
+    list.forEach(b => {
+      if (b.v === null) return; const xc = X(LT(b.d)), h = Math.max(b.v > 0 ? 2 : 0, P0 + RH - RY(b.v));
+      if (h > 0) g += b.f ? '<rect x="' + (xc - bw / 2 + 0.75) + '" y="' + (P0 + RH - h + 0.75) + '" width="' + (bw - 1.5) + '" height="' + Math.max(0, h - 0.75) + '" rx="2" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="3 2"/>' : '<rect x="' + (xc - bw / 2) + '" y="' + (P0 + RH - h) + '" width="' + bw + '" height="' + h + '" rx="2" fill="var(--accent)"/>';
+      if (b.v >= 1) g += txt(xc, P0 + RH - h - 3, fmt(b.v, 0), 'font-size:11px;fill:var(--ink2);' + halo, 'middle');
+    });
+    g += txt(m.l, P0 - 8, label, 'fill:var(--ink2);font-size:11px');
+    g += txt(m.l - 6, P0 + RH + 4, '0', '', 'end');
+  };
+  panel(R0, bars, narrow ? 'Rain at Coca, mm per 05:00–05:00 day (dashed: forecast)' : 'Rain at Coca, mm per day from 05:00 to 05:00: observed at H1135, forecast dashed');
+  panel(U0, ubars, narrow ? 'Rain upstream, mm, wettest point (dashed: forecast)' : 'Rain upstream, mm per 05:00–05:00 day, wettest point: observed at CCS and Sierrazul stations, forecast dashed');
   for (let k = -5; k <= 5; k++) {
     const d = addDays(o.date, k), a = LT(d, '05:00'), dl = obs.filter(p => p[0] >= a && p[0] < a + DAY).map(p => p[1]), r = rows.find(x => x.date === d), b = bars[k + 5];
     const parts = [dateFmt(d, { weekday: 'short', month: 'short', day: 'numeric' }) + ' 05:00 to ' + dateFmt(addDays(d, 1), { weekday: 'short' }) + ' 05:00'];
@@ -681,9 +692,10 @@ function o5Chart(o, sd, hist) {
     if (k <= 0) for (let L = 1; L <= 4; L++) { const F = fcs.find(f => f.date === addDays(d, -L)), q = F && Array.isArray(F.rows) ? F.rows.find(x => x.date === d) : null; if (q && isNum(q.mid)) parts.push((24 * L) + ' h forecast ' + fmt(q.mid, 1) + ' m') }
     if (k === 0 && isNum(now)) parts.push(fmt(now, 2) + ' m at ' + (o.s('riverTime') || '–'));
     if (b.v !== null) parts.push((b.f ? 'forecast rain ' : 'rain at H1135 ') + fmt(b.v) + ' mm');
-    g += '<rect class="hit" x="' + X(a) + '" y="' + m.t + '" width="' + (X(a + DAY) - X(a)) + '" height="' + (R0 + RH - m.t) + '" fill="transparent"><title>' + esc(parts.join(', ')) + '</title></rect>';
+    { const u = ubars[k + 5], by = k <= 0 && hist && hist.upRain && hist.upRain[d] ? hist.upRain[d].by : null; if (u.v !== null) parts.push((u.f ? 'forecast rain upstream ' : 'rain upstream ') + fmt(u.v) + ' mm' + (by ? ' (' + Object.keys(by).map(c => c + ' ' + fmt(by[c])).join(', ') + ')' : '')) }
+    g += '<rect class="hit" x="' + X(a) + '" y="' + m.t + '" width="' + (X(a + DAY) - X(a)) + '" height="' + (RB - m.t) + '" fill="transparent"><title>' + esc(parts.join(', ')) + '</title></rect>';
   }
-  return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="Napo at Coca: observed level for the past 5 days, then the most likely level for the next 5 days with a low-to-high margin, in metres; days run 05:00 to 05:00; observed level of the Coca at San Sebastián (H1134) and daily rain at Coca below. Values in the table below.">' + g + '</svg>';
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="Napo at Coca: observed level for the past 5 days, then the most likely level for the next 5 days with a low-to-high margin, in metres; days run 05:00 to 05:00; observed level of the Coca at San Sebastián (H1134) and daily rain at Coca and upstream below. Values in the table below.">' + g + '</svg>';
 }
 // Station map. Exact = coordinates from the INAMHI Visor station list; others approximate until read from the Visor. Rivers are schematic.
 const STMAP = {
@@ -1187,15 +1199,16 @@ function setVal(el, v) {
 // past levels and rain at H1135, merged from the stored station readings (each holds 48 hourly values)
 function gaugeHist() {
   if (st.histCache && st.histCache.n === st.gaugeDocs) return st.histCache.h;
-  const lv = new Map(), rn = new Map(), l34 = new Map();
+  const lv = new Map(), rn = new Map(), l34 = new Map(), UPC = ['M5189', 'M5187', 'M5190', 'M1124'], ru = {}; UPC.forEach(c => ru[c] = new Map());
   (st.gaugeList || []).slice().sort((a, b) => String(a.fetchedAt || a.date).localeCompare(String(b.fetchedAt || b.date))).forEach(d => {
     if (!d || !d.t0Ecuador || !d.series) return;
     const t0 = Date.parse(String(d.t0Ecuador).replace(' ', 'T').slice(0, 16) + ':00Z'); if (!isFinite(t0)) return;
     const put = (str, map) => String(str || '').split(',').forEach((v, k) => { if (v !== '' && isFinite(+v)) map.set(t0 + k * 36e5, +v) });
-    put(d.series.H1135, lv); put(d.series.rain_H1135, rn); put(d.series.H1134, l34);
+    put(d.series.H1135, lv); put(d.series.rain_H1135, rn); put(d.series.H1134, l34); UPC.forEach(c => put(d.series['rain_' + c], ru[c]));
   });
   const rain = {}; rn.forEach((v, t) => { const day = new Date(t - 5 * 36e5).toISOString().slice(0, 10); rain[day] = Math.round(((rain[day] || 0) + v) * 10) / 10 });
-  const h = { lvl: [...lv.entries()].sort((a, b) => a[0] - b[0]), lvl34: [...l34.entries()].sort((a, b) => a[0] - b[0]), rain, rainH: rn };
+  const upRain = {}; UPC.forEach(c => { const tot = {}; ru[c].forEach((v, t) => { const day = new Date(t - 5 * 36e5).toISOString().slice(0, 10); tot[day] = (tot[day] || 0) + v }); Object.keys(tot).forEach(day => { const v = Math.round(tot[day] * 10) / 10, e = upRain[day] || (upRain[day] = { max: null, by: {} }); e.by[c] = v; if (e.max === null || v > e.max) e.max = v }) });
+  const h = { upRain, lvl: [...lv.entries()].sort((a, b) => a[0] - b[0]), lvl34: [...l34.entries()].sort((a, b) => a[0] - b[0]), rain, rainH: rn };
   st.histCache = { n: st.gaugeDocs, h }; return h;
 }
 function stamp(x) { x = x ? String(x).slice(0, 16) : ''; return /^\d{4}-\d\d-\d\dT\d\d:\d\d/.test(x) ? dateFmt(x.slice(0, 10), { month: 'short', day: 'numeric' }) + ', ' + x.slice(11, 16) : '' }
@@ -1280,7 +1293,7 @@ function refresh() {
 
   // levels
   const ld = levelDetail(o);
-  $('levels').innerHTML = (a => (a.splice(3, 0, wbTile(o)), a))([['Rain', 'rain'], ['Lightning', 'lightning'], ['Heat', 'heat'], ['River', 'river'], ['Wind', 'wind']].map(p => '<div class="lv" data-level="' + o.levels[p[1]] + '"><span>' + p[0] + '</span><b>' + LV[o.levels[p[1]]] + (p[1] === 'wind' ? ' <span class="wdir" title="' + (ld.wind.dir ? 'Wind from ' + ld.wind.dir : 'Wind direction not gathered') + '">· ' + (ld.wind.dir || '–') + '</span>' : '') + '</b>' + (ld[p[1]].v ? '<i>' + esc(ld[p[1]].v) + '</i>' : '') + (ld[p[1]].b ? '<i class="band">' + esc(ld[p[1]].b) + '</i>' : '') + '</div>')).join('') + (() => { const c = cloudInfo(o); return '<div class="lv lvinfo"><span>Cloud</span><b>' + (c ? cap(c.word) : 'Not gathered') + '</b>' + (c ? '<i>' + [c.am !== null ? 'AM ' + fmt(c.am, 0) + '%' : '', c.pm !== null ? 'PM ' + fmt(c.pm, 0) + '%' : ''].filter(Boolean).join(', ') + '</i><i class="band">sky covered, 06–18</i>' : '') + '</div>' })();
+  $('levels').innerHTML = (a => (a.splice(3, 0, wbTile(o)), a.splice(1, 0, obsRainTile(o)), a))([['Rain', 'rain'], ['Lightning', 'lightning'], ['Heat', 'heat'], ['River', 'river'], ['Wind', 'wind']].map(p => '<div class="lv" data-level="' + o.levels[p[1]] + '"><span>' + p[0] + '</span><b>' + LV[o.levels[p[1]]] + (p[1] === 'wind' ? ' <span class="wdir" title="' + (ld.wind.dir ? 'Wind from ' + ld.wind.dir : 'Wind direction not gathered') + '">· ' + (ld.wind.dir || '–') + '</span>' : '') + '</b>' + (ld[p[1]].v ? '<i>' + esc(ld[p[1]].v) + '</i>' : '') + (ld[p[1]].b ? '<i class="band">' + esc(ld[p[1]].b) + '</i>' : '') + '</div>')).join('') + (() => { const c = cloudInfo(o); return '<div class="lv lvinfo"><span>Cloud</span><b>' + (c ? cap(c.word) : 'Not gathered') + '</b>' + (c ? '<i>' + [c.am !== null ? 'AM ' + fmt(c.am, 0) + '%' : '', c.pm !== null ? 'PM ' + fmt(c.pm, 0) + '%' : ''].filter(Boolean).join(', ') + '</i><i class="band">sky covered, 06–18</i>' : '') + '</div>' })();
 
   // gaps + status
   const gaps = [];
@@ -1304,6 +1317,12 @@ function refresh() {
   renderLog();
 }
 
+function obsRainTile(o) {
+  const rr = o.gauge && Array.isArray(o.gauge.rain) ? o.gauge.rain.filter(r => isNum(r.r24)) : [];
+  if (!rr.length) return '<div class="lv lvinfo"><span>Rain, last 24 h</span><b>Not read</b><i>INAMHI stations</i></div>';
+  const tot = Math.round(rr.reduce((x, r) => x + r.r24, 0) * 10) / 10, w = rr.reduce((x, r) => r.r24 > x.r24 ? r : x), up = rr.map(r => r.upTo).filter(Boolean).sort().pop();
+  return '<div class="lv lvinfo" title="' + esc(rr.map(r => r.name + ' ' + fmt(r.r24) + ' mm').join(', ')) + '"><span>Rain, last 24 h</span><b>' + fmt(tot) + ' mm</b><i>all ' + rr.length + ' stations' + (w.r24 > 0 ? ', most at ' + esc(w.name) + ' ' + fmt(w.r24) : '') + '</i><i class="band">INAMHI, to ' + esc(up || '–') + '</i></div>';
+}
 function wbTile(o) {
   const h = o.heat, rep = o.n('wbgt');
   if (!h || !isNum(h.wbSun)) return '<div class="lv lvinfo"><span>WBGT</span><b>Not gathered</b>' + (rep !== null ? '<i>reported ' + fmt(rep, 1) + ' °C</i>' : '<i>needs temperature and humidity</i>') + '</div>';
