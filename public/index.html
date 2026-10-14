@@ -1,0 +1,1540 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f5c5c">
+<title>Napo Basin Weather & Hazard Assessment</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%226%22 fill=%22%230f5c5c%22/%3E%3Cpath d=%22M4 20c4-4 8 4 12 0s8 4 12 0%22 stroke=%22%23fff%22 stroke-width=%223%22 fill=%22none%22/%3E%3C/svg%3E">
+<style>body{margin:0}[hidden]{display:none!important}</style>
+</head>
+<body>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600;700&display=swap">
+<style>
+/* Layout: gaps and hazard levels first, then the inputs on the left with the finished brief text pinned on the right; the record log below. Same tokens as Napo Reach Watch. */
+:root {
+  --bg: #f1f4ef; --card: #fbfcfa; --ink: #10201a; --ink2: #44534b; --muted: #77847d;
+  --line: #dde3dc; --axis: #b9c3bb; --accent: #0f5c5c; --field: #ffffff; --paper: #ffffff;
+  --ok-bg: #dcf1de; --ok-fg: #0b4a17; --warn-bg: #ffe7a1; --warn-fg: #453200;
+  --hi-bg: #ffcfa3; --hi-fg: #552200; --bad-bg: #c2302d; --bad-fg: #ffffff;
+  --unk-bg: #e2e6e1; --unk-fg: #44534b; --danger: #b3261e;
+  --f-display: "Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e1412; --card: #18201d; --ink: #f1f5f2; --ink2: #b8c3bc; --muted: #88948e;
+  --line: #27322d; --axis: #3b4842; --accent: #5cc4c0; --field: #111815; --paper: #111815;
+  --ok-bg: #133d1d; --ok-fg: #b9edc2; --warn-bg: #574100; --warn-fg: #ffe18f;
+  --hi-bg: #6b3410; --hi-fg: #ffd9b8; --bad-bg: #b02a28; --bad-fg: #ffffff;
+  --unk-bg: #222b27; --unk-fg: #b8c3bc; --danger: #ff8f88; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0e1412; --card: #18201d; --ink: #f1f5f2; --ink2: #b8c3bc; --muted: #88948e;
+  --line: #27322d; --axis: #3b4842; --accent: #5cc4c0; --field: #111815; --paper: #111815;
+  --ok-bg: #133d1d; --ok-fg: #b9edc2; --warn-bg: #574100; --warn-fg: #ffe18f;
+  --hi-bg: #6b3410; --hi-fg: #ffd9b8; --bad-bg: #b02a28; --bad-fg: #ffffff;
+  --unk-bg: #222b27; --unk-fg: #b8c3bc; --danger: #ff8f88; color-scheme: dark }
+
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--ink); font: 400 16px/1.45 var(--f-body); padding-inline: 16px; padding-block: 20px 56px }
+.wrap { max-width: 1180px; margin-inline: auto; display: flex; flex-direction: column; gap: 20px }
+h1, h2, h3 { font-family: var(--f-display); margin: 0; text-wrap: balance }
+h1 { font-size: 28px; font-weight: 700; line-height: 1.1 }
+h2 { font-size: 15px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink2) }
+p { margin: 0 }
+.sub { color: var(--ink2); font-size: 14px }
+.tiny { color: var(--muted); font-size: 13px }
+header.top { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: flex-end; justify-content: space-between }
+header.top .reach { color: var(--ink2); font-size: 15px }
+.datenav { display: flex; gap: 6px; align-items: center; flex-wrap: wrap }
+.datenav input { width: auto; min-width: 150px }
+.launch { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px }
+.launch label { font-weight: 600 }
+.launch input { width: auto; min-width: 150px }
+.launch .sub { margin: 0 }
+.lastref { white-space: nowrap; font-variant-numeric: tabular-nums }
+
+input, select, textarea, button { font: inherit }
+input, select, textarea { background: var(--field); color: var(--ink); border: 1px solid var(--axis); border-radius: 5px; padding: 8px 10px; min-height: 42px; width: 100%; min-width: 0; font-size: 16px }
+textarea { min-height: 64px; resize: vertical; line-height: 1.4 }
+input[type="checkbox"] { width: 20px; height: 20px; min-height: 0; padding: 0; accent-color: var(--accent); flex: none }
+input[aria-invalid="true"] { border-color: var(--danger); outline: 1px solid var(--danger) }
+button { cursor: pointer; border-radius: 5px; border: 1px solid var(--axis); background: transparent; color: var(--ink); padding: 8px 14px; min-height: 42px; font: 600 15px var(--f-display); letter-spacing: .02em }
+button.primary { background: var(--ink); color: var(--card); border-color: var(--ink) }
+button.small { min-height: 30px; padding: 2px 10px; font-size: 13px }
+button:disabled { opacity: .5; cursor: default }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center }
+
+.banner { background: var(--warn-bg); color: var(--warn-fg); border-radius: 6px; padding: 8px 12px; font-size: 14px }
+
+/* status */
+.status { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px }
+.status .head { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; justify-content: space-between }
+.status .label { font: 700 26px/1.1 var(--f-display) }
+.gaps { display: flex; flex-wrap: wrap; gap: 6px }
+.gaps button { min-height: 32px; padding: 3px 10px; font: 500 14px var(--f-body); letter-spacing: 0; border-color: var(--warn-fg); background: var(--warn-bg); color: var(--warn-fg) }
+.levels { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px }
+.lv { border-radius: 5px; padding: 7px 10px; background: var(--unk-bg); color: var(--unk-fg); display: flex; flex-direction: column; min-width: 0 }
+.lv span { font: 600 12px var(--f-display); letter-spacing: .08em; text-transform: uppercase; opacity: .85 }
+.lv b { font: 700 19px/1.15 var(--f-display) }
+.lv i { font-style: normal; font-size: 13.5px; line-height: 1.3; font-variant-numeric: tabular-nums }
+.lv b .wdir { font: inherit; letter-spacing: 0; text-transform: none; opacity: 1 }
+.lv i.band { font-size: 12px; opacity: .8 }
+[data-level="1"] { background: var(--ok-bg); color: var(--ok-fg) }
+[data-level="2"] { background: var(--warn-bg); color: var(--warn-fg) }
+[data-level="3"] { background: var(--hi-bg); color: var(--hi-fg) }
+[data-level="4"] { background: var(--bad-bg); color: var(--bad-fg) }
+.lv.lvinfo { background: var(--field); color: var(--ink); border: 1px solid var(--line) }
+.chip { display: inline-block; padding: 1px 8px; border-radius: 10px; font: 600 12px/1.6 var(--f-display); letter-spacing: .04em; text-transform: uppercase; background: var(--unk-bg); color: var(--unk-fg); white-space: nowrap }
+
+/* two columns */
+.cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start }
+@media (min-width: 1020px) { .cols { grid-template-columns: minmax(0, 1fr) minmax(0, 440px) } .right { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px) } }
+.left { display: flex; flex-direction: column; gap: 16px; min-width: 0 }
+.right { display: flex; flex-direction: column; gap: 10px; min-width: 0 }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 14px; display: flex; flex-direction: column; gap: 12px; min-width: 0 }
+.card > .ch .ht { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline }
+.upd { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap }
+.upd[data-kind="none"] { font-style: italic }
+.card > .ch { display: flex; flex-wrap: wrap; gap: 2px 12px; align-items: baseline; justify-content: space-between }
+a.ext { color: var(--accent); font: 600 14px var(--f-display); letter-spacing: .02em; text-decoration: underline; text-underline-offset: 3px; padding-block: 4px }
+.fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap: 10px 12px }
+label.f { display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--ink2); min-width: 0; justify-content: flex-end }
+label.f.wide { grid-column: 1 / -1 }
+.lab { display: flex; gap: 6px; align-items: baseline; justify-content: space-between }
+.lab i { font-style: normal; color: var(--muted) }
+.tag { font: 600 11px var(--f-display); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-style: normal; white-space: nowrap }
+.tag[data-s="edited"] { color: var(--accent) }
+.tag[data-s="online"], .tag[data-s="observed"] { color: var(--ok-fg) }
+input.locked, select.locked, textarea.locked { background: transparent; border-color: var(--line); border-style: dashed; color: var(--ink); opacity: 1; -webkit-text-fill-color: var(--ink) }
+select.locked { appearance: none; -webkit-appearance: none }
+label.check { display: flex; gap: 10px; align-items: center; font-size: 15px; color: var(--ink); min-height: 32px }
+
+/* heat tiles */
+.stations { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--line); padding-top: 12px }
+.stmap { margin: 4px 0 0; display: flex; flex-direction: column; gap: 4px }
+.stmap svg { display: block; max-width: 100%; height: auto }
+.sth { font: 600 13px var(--f-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ink2) }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 8px }
+.tile { border: 1px solid var(--line); border-radius: 5px; padding: 8px 10px; display: flex; flex-direction: column; gap: 1px; min-width: 0; background: var(--field) }
+.tile span { font: 600 12px var(--f-display); letter-spacing: .08em; text-transform: uppercase; color: var(--ink2) }
+.tile b { font: 700 26px/1.1 var(--f-display); font-variant-numeric: tabular-nums }
+.tile b small { font-size: 14px; font-weight: 600; color: var(--ink2) }
+.tile em { font-style: normal; font-size: 12.5px; color: var(--muted) }
+
+/* models */
+.models { display: flex; flex-direction: column; gap: 8px }
+.mrow { display: grid; grid-template-columns: minmax(84px, 1.1fr) 68px 68px minmax(0, 3fr) 34px; gap: 6px; align-items: center }
+.mrow.h { font: 600 12px var(--f-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ink2) }
+.mrow button { min-height: 42px; padding: 0; font-size: 18px; color: var(--muted) }
+@media (max-width: 560px) { .mrow { grid-template-columns: minmax(0, 1.4fr) 62px 62px 34px } .mrow .note { grid-column: 1 / -1; grid-row: 2 } .mrow.h .note { display: none } }
+
+/* wording */
+.word { display: flex; flex-direction: column; gap: 4px }
+.word .lab button { margin-left: auto }
+.word .lab { align-items: center; font-size: 14px; color: var(--ink2); justify-content: flex-start; gap: 8px }
+
+/* preview */
+#brief { margin: 0; background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 14px; font: 400 14.5px/1.45 var(--f-body); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 68vh; overflow-y: auto; -webkit-user-select: text; user-select: text }
+.msg { font-size: 14px; color: var(--ink2); min-height: 1.4em }
+.msg[data-kind="err"] { color: var(--danger); font-weight: 600 }
+
+/* log */
+.o5chart svg { display: block; width: 100%; height: auto; overflow: visible }
+.o5chart text { font-family: var(--f-body); fill: var(--ink2); font-size: 12px }
+.o5chart .hit:hover + .col, .o5chart .hit:focus + .col { opacity: 1 }
+.tablewrap { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 6px }
+table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap }
+th { font: 600 12px var(--f-display); letter-spacing: .06em; text-transform: uppercase; color: var(--ink2) }
+tr:last-child td { border-bottom: 0 }
+td.r, th.r { text-align: right }
+tbody tr { cursor: pointer }
+tbody tr[aria-current="true"] td { background: var(--field); font-weight: 600 }
+td .chip { margin-right: 3px }
+.empty { color: var(--ink2); padding: 22px 12px; font-size: 15px }
+details { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 10px 14px }
+details > summary { cursor: pointer; font: 600 16px var(--f-display); min-height: 28px }
+details > div { display: flex; flex-direction: column; gap: 12px; padding-top: 12px }
+.notes { font-size: 15px; color: var(--ink2); max-width: 70ch; margin: 0; padding-left: 20px }
+.notes li { margin-bottom: 5px }
+section { display: flex; flex-direction: column; gap: 10px; min-width: 0 }
+.snapstamp { font-size: 13px; color: var(--ink2); border-bottom: 1px solid var(--line); padding-bottom: 6px }
+.snapping #brief { max-height: none; overflow: visible }
+.snapping .right { position: static }
+.tasnap { background: var(--field); color: var(--ink); border: 1px solid var(--axis); border-radius: 5px; padding: 8px 10px; min-height: 42px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 16px; line-height: 1.4 }
+.tasnap.locked { background: transparent; border-style: dashed; border-color: var(--line) }
+@media (max-width: 480px) { .status .label { font-size: 22px } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>NAPO BASIN | DAILY WEATHER &amp; HAZARD ASSESSMENT</h1>
+      <p class="reach">Daily weather and hazard record · all times Ecuador (UTC−5) · standalone version</p>
+      <div class="launch"><label for="cShoot">Launch day</label><input type="date" id="cShoot"><span id="launchInfo" class="sub"></span></div>
+    </div>
+    <div class="datenav">
+      <button type="button" id="dPrev" aria-label="Previous day">‹</button>
+      <input type="date" id="dPick" aria-label="Brief date">
+      <button type="button" id="dNext" aria-label="Next day">›</button>
+      <button type="button" id="dToday">Today</button>
+      <button type="button" id="dRefresh" title="Save edits, read the INAMHI stations and gather the forecasts again">Refresh</button>
+      <span class="tiny lastref" id="lastRef"></span>
+    </div>
+  </header>
+
+  <div class="banner" id="banner" hidden></div>
+
+  <section aria-live="polite">
+    <div class="status">
+      <div class="head">
+        <span class="label" id="stLabel">Loading the brief</span>
+        <span class="sub" id="stSave"></span>
+      </div>
+      <p class="sub" id="stAuto">Forecast values gathered before 06:00 appear here already filled in.</p>
+      <div class="gaps" id="gaps"></div>
+      <div class="levels" id="levels"></div>
+    </div>
+  </section>
+
+  <div class="cols">
+    <div class="left" id="form"></div>
+
+    <aside class="right">
+      <h2>Brief text</h2>
+      <pre id="brief" tabindex="0"></pre>
+      <div class="row nosnap">
+        <button type="button" class="primary" id="bCopy">Copy brief</button>
+        <button type="button" id="bIssue">Mark as issued</button>
+        <button type="button" id="bPdf" hidden>Export PDF</button>
+        <label class="f" style="flex:0 0 108px"><span class="lab">Issue time</span><input id="f_issueTime" data-k="issueTime" data-t="text" placeholder="06:30" maxlength="5"></label>
+      </div>
+      <p class="msg" id="bMsg" role="status"></p>
+    </aside>
+  </div>
+
+  <section>
+    <div class="row" style="justify-content:space-between">
+      <h2>Record</h2>
+      <button type="button" class="small nosnap" id="bCsv" hidden>Export record as CSV</button>
+    </div>
+    <div class="tablewrap" id="log"><p class="empty">Each day's brief is kept here once it has values: forecast, heat indices, river level and hazard levels.</p></div>
+    <p class="tiny">Issued rows show the values frozen when the brief was marked as issued. Tap a row to open that day.</p>
+  </section>
+
+  <section class="nosnap">
+    <details>
+      <summary>Header settings</summary>
+      <div>
+        <div class="fields">
+          <label class="f wide"><span class="lab">Title line</span><input id="cTitle" maxlength="90"></label>
+          <label class="f wide"><span class="lab">Locations line</span><input id="cLoc" maxlength="90"></label>
+          <label class="f"><span class="lab">Issue time for past dates</span><input id="cTime" maxlength="5" placeholder="06:30"></label>
+        </div>
+        <div class="row"><button type="button" class="primary" id="cSave">Save header</button><span class="msg" id="cMsg" role="status"></span></div>
+      </div>
+    </details>
+  </section>
+
+  <section class="nosnap">
+    <details>
+      <summary>How the values and levels are worked out</summary>
+      <div>
+        <ul class="notes">
+          <li>The gathered max temperature and humidity are one model's values for the same hour, taken from the model that gives the highest humidex, so the heat indices describe the hotter scenario. Upstream rain is the highest of four forecast points: Tena, Jatunyacu, El Chaco and Loreto.</li>
+          <li>Heat indices use the maximum temperature and the humidity at that hour. Dew point: Magnus formula. Humidex: Environment Canada, T + 0.5555 × (vapour pressure in hPa − 10). Wet-bulb: Stull (2011), valid near sea-level pressure.</li>
+          <li>WBGT: when you enter a reported value it is used in the brief; otherwise the brief gives a calculated value. It uses the Liljegren et al. (2008) model, the method behind the US National Weather Service WBGT forecasts and wbgt.app: natural wet-bulb and black-globe temperatures from air temperature, humidity, station pressure (sea-level pressure brought to Coca's 250 m), wind (10 m wind reduced to 2 m) and solar radiation (sun position at Coca and the forecast cloud cover). It is worked out for each daytime hour from 06:00 to 18:00; the brief gives the hottest full-sun hour and the shade value at that hour. WBGT = 0.7 × natural wet-bulb + 0.2 × globe + 0.1 × air temperature. Heat-stress concern by WBGT in full sun: under 25°C low, 25 to 27.9 elevated, 28 to 30.9 high, 31 and over extreme. It is a model estimate, not a measurement: an exposed sandbar or a boat deck can run hotter.</li>
+          <li>Suggested levels. Rain, highest 24 h total among the models: under 22 mm low, 22 to 31 moderate, 32 to 60 high, over 60 very high (the Ecuadorian advisory scale). Lightning: none low, isolated moderate, scattered or likely high. Heat, by humidex: under 30 low, 30 to 39 moderate, 40 to 45 high, 46 and over very high. Wind, by gusts: under 30 km/h low, 30 to 49 moderate, 50 to 69 high, 70 and over very high; at least moderate when thunderstorms are forecast.</li>
+          <li>River level, from the Napo at Coca (H1135): under 4.5 m low, 4.5 to 6.0 m moderate, over 6.0 m high, and one step higher when the trend is "rising fast". With no level reading, the outlook sets it and it shows as unconfirmed when there is none.</li>
+          <li>River outlook suggestion: rise likely with 30 mm or more of upstream rain (observed or forecast), or a rising river with 10 mm or more; rise possible with 10 mm or more upstream, 30 mm or more at Coca, or a rising river. These triggers are provisional until more paired readings exist.</li>
+          <li>Values gathered online (forecast task, INAMHI stations, advisories) are shown read-only with an "online" tag and replace anything typed. A field becomes editable only when nothing was gathered for it. Your judgement stays editable: river outlook, hazard levels, wording, advisory check, observed conditions note and the model table.</li>
+          <li>INAMHI stations: read from the INAMHI Visor by this site's server each time the page opens, every 15 minutes while it stays open, and when you press Refresh: levels at Napo at Coca town, Coca at San Sebastián and the headwater stations Quijos DJ Oyacachi and Salado AJ Coca; rain at the three CCS stations, Sierrazul and Puyo (listed in the Napo River section), plus Coca town for observed rain. The headwater levels are shown for context: in the 2 to 11 October record they did not anticipate the rises at San Sebastián. They fill the river level, time, 24 h change, trend, San Sebastián level and observed rain, ahead of the forecast values. Evening rain of 8 mm or more in 12 hours at Puyo or Sierrazul now suggests "rise possible": twice in ten days it came 6 to 10 hours before a rise of about 0.5 m that no other gauge announced.</li>
+          <li>River outlook days run from 05:00 to 05:00 (Tuesday covers 05:00 Tuesday to 05:00 Wednesday), for the level range and for the rain, observed and forecast. The most likely level, the bold line, recedes more slowly than the low end and adds half of the rain-driven rise; on the 2 to 11 October record it was off by 0.19 m on average, against 0.31 m for simply keeping today's level. The 24 h values (rain, level change, station minimum and maximum) end at the time of the last refresh.</li>
+          <li>River outlook, 5 days (provisional): the low end follows recession only (about 0.3 m a day, slower towards 4.5 m; the day after a pulse 60% of the rise comes off). The high end adds a rise sized by each day's forecast rain, the largest of the upstream points and Coca town (under 5 mm +0.1 m, 5 to 10 mm +0.3, 10 to 20 mm +0.6, 20 to 35 mm +1.0, more +1.4), and stays at least 0.6 m above the low end because unannounced rises of about 0.5 m came twice in ten days. Tomorrow's range is the river forecast used everywhere in the assessment; each day's five ranges are kept in the record, and the Record table compares tomorrow's range with the next day's level.</li>
+          <li>Trend: read it from the last 3 hours on the Visor chart. Rising is 0.03 m per hour or more (about 0.1 m in 3 hours); rising fast is 0.1 m per hour or more, which in this record marked the two rises of about 1 m.</li>
+          <li>The 24 h river change fills itself from the previous day's level when you leave it blank.</li>
+          <li>Export PDF produces an A4 report of the day on screen: hazard levels, a table of the numbers, then the brief text. Emoji are left out of the PDF because its built-in fonts have none. A draft is marked as a draft.</li>
+          <li>The issue time fills itself with the time you open the page (Ecuador time). Type over it to change it; it is fixed when you mark the brief as issued.</li>
+          <li>Every level and every line of wording can be overridden. Values tagged "auto" came from the morning gathering; "edited" are yours.</li>
+          <li>Gathered sources, read each time the page opens and when you press Refresh: MET Norway (ECMWF-based) hourly forecasts at Coca and the four upstream points; Open-Meteo for the model comparison (ECMWF, GFS, UKMO, ICON) and gusts; 7Timer (GFS-based) for instability; Coca airport METAR; GEOGLOWS modelled flow. Official advisories are not searched automatically in this version: check INAMHI and SNGR and tick the box. Your entries and settings stay in this browser; each morning's river forecast and the briefs marked as issued are shared with everyone using this site.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+/* Standalone runtime: stands in for the Claude page services. Records and settings stay in this browser (localStorage);
+   live data comes from this site's functions (/api/stations, /api/weather); each morning's river forecast and the briefs
+   marked as issued are shared with everyone using the site (/api/shared). */
+(function () {
+  const LS = 'naa:v1:';
+  const ls = {
+    get(k) { try { const v = localStorage.getItem(LS + k); return v ? JSON.parse(v) : null } catch (e) { return null } },
+    set(k, v) { try { localStorage.setItem(LS + k, JSON.stringify(v)) } catch (e) {} },
+    keys(p) { const out = []; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.indexOf(LS + p) === 0) out.push(k.slice(LS.length)) } } catch (e) {} return out }
+  };
+  const isObj = x => x && typeof x === 'object' && !Array.isArray(x);
+  const merge = (a, b) => { const o = Object.assign({}, a || {}); Object.keys(b || {}).forEach(k => { o[k] = isObj(b[k]) && isObj(o[k]) ? merge(o[k], b[k]) : b[k] }); return o };
+  const ecDate = () => new Date(Date.now() - 5 * 36e5).toISOString().slice(0, 10);
+  const subs = { briefs: [], gauges: [], forecasts: [], config: [] }, shared = { briefs: new Map(), forecasts: new Map() };
+  let forecastsLoaded = false;
+  const api = async (path, opt) => { const r = await fetch(path, Object.assign({ cache: 'no-store' }, opt)); const j = await r.json().catch(() => ({})); if (!r.ok || j.error) throw new Error(j.error || 'HTTP ' + r.status); return j };
+  const post = (kind, body) => api('/api/shared?kind=' + kind, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
+  function briefDocs() {
+    const m = new Map(); shared.briefs.forEach((d, k) => m.set(k, d));
+    ls.keys('briefs/').forEach(k => {
+      const id = k.slice(7), loc = ls.get(k), sh = m.get(id);
+      m.set(id, sh && sh.status === 'issued' && loc.status !== 'issued' ? merge(loc, { status: 'issued', issuedAt: sh.issuedAt, issuedOn: sh.issuedOn, issuedTs: sh.issuedTs, issuedText: sh.issuedText, final: sh.final }) : loc);
+    });
+    return m;
+  }
+  const gaugeDocs = () => { const m = new Map(); ls.keys('gauges/').forEach(k => m.set(k.slice(7), ls.get(k))); return m };
+  const snapOf = map => ({ docs: [...map.entries()].sort((a, b) => a[0] < b[0] ? 1 : -1).map(([id, d]) => ({ id, data: () => d })) });
+  function emit(kind) {
+    if (kind === 'forecasts' && !forecastsLoaded) return;
+    const map = kind === 'briefs' ? briefDocs() : kind === 'gauges' ? gaugeDocs() : shared.forecasts;
+    subs[kind].forEach(f => { try { f(snapOf(map)) } catch (e) { console.error(e) } });
+  }
+  const emitConfig = () => { const c = ls.get('config/main'); subs.config.forEach(f => f({ exists: !!c, data: () => c })) };
+
+  let pending = null;
+  function loadLive(fresh) {
+    if (pending) return pending;
+    const q = fresh ? '?fresh=1' : '';
+    pending = Promise.allSettled([api('/api/stations' + q), api('/api/weather' + q)]).then(([st, wx]) => {
+      const date = ecDate(), key = 'briefs/' + date, doc = Object.assign({ date, status: 'draft', createdTs: Date.now() }, ls.get(key) || {});
+      if (st.status === 'fulfilled' && st.value.gauge) {
+        doc.gauge = st.value.gauge;
+        if (st.value.history) ls.set('gauges/' + st.value.history.date, st.value.history);
+        if (st.value.coords) { window.NAA_COORDS = st.value.coords; ls.set('coords', st.value.coords) }
+      }
+      if (wx.status === 'fulfilled' && wx.value.auto) doc.auto = wx.value.auto;
+      ls.set(key, doc); emit('briefs'); emit('gauges');
+      window.NAA_LIVE = { at: Date.now(), stations: st.status === 'fulfilled', weather: wx.status === 'fulfilled', errors: [st, wx].filter(x => x.status === 'rejected').map(x => String(x.reason && x.reason.message)) };
+      return window.NAA_LIVE;
+    }).finally(() => { pending = null });
+    return pending;
+  }
+  async function loadShared() {
+    try { const j = await api('/api/shared?kind=briefs'); shared.briefs = new Map(j.items.map(x => [x.date, x])); emit('briefs') } catch (e) {}
+    try { const j = await api('/api/shared?kind=forecasts'); shared.forecasts = new Map(j.items.map(x => [x.date, x])); forecastsLoaded = true; emit('forecasts') } catch (e) {}
+  }
+
+  function docRef(path) {
+    const parts = path.split('/'), col = parts[0], id = parts[1];
+    const after = d => {
+      if (col === 'briefs') { emit('briefs'); if (d.status === 'issued') post('briefs', Object.assign({}, d, { date: id })).then(() => { shared.briefs.set(id, d) }).catch(() => {}) }
+      else if (col === 'config') emitConfig();
+    };
+    return {
+      async get() { const d = ls.get(path); return { exists: !!d, data: () => d } },
+      async set(data) {
+        if (col === 'forecasts') { await post('forecasts', data); if (!shared.forecasts.has(id)) shared.forecasts.set(id, data); emit('forecasts'); return }
+        ls.set(path, data); after(data);
+      },
+      async update(data) { const next = merge(ls.get(path), data); ls.set(path, next); after(next) },
+      onSnapshot(cb) { if (col === 'config') { subs.config.push(cb); setTimeout(emitConfig, 0) } return () => {} }
+    };
+  }
+  const db = {
+    doc: docRef,
+    collection(name) { const q = { orderBy() { return q }, limit() { return q }, onSnapshot(cb) { if (subs[name]) { subs[name].push(cb); setTimeout(() => emit(name), 0) } return () => {} } }; return q }
+  };
+  // Refresh: the page asks to start its two gathering tasks; here both are one live read
+  const mcp = { async callTool(server, tool) { if (tool !== 'fire_trigger') throw { code: 'bad_request', message: 'unknown tool' }; loadLive(true); return {} } };
+  const downloads = {
+    async save({ filename, data }) {
+      const blob = data instanceof Blob ? data : new Blob([data], { type: /\.pdf$/.test(filename) ? 'application/pdf' : /\.csv$/.test(filename) ? 'text/csv' : 'application/octet-stream' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; document.body.appendChild(a); a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove() }, 4000); return true;
+    }
+  };
+  try { const c = ls.get('coords'); if (c) window.NAA_COORDS = c } catch (e) {}
+  let started = false;
+  window.claude = { use: async name => {
+    if (name === 'db') { if (!started) { started = true; setTimeout(() => { loadLive(false); loadShared() }, 0); setInterval(() => { if (document.visibilityState === 'visible') loadLive(false) }, 15 * 60e3) } return db }
+    return { mcp, downloads }[name] || null;
+  } };
+  window.NAA_STANDALONE = true;
+})();
+
+</script>
+<script>
+/*PURE-START*/
+const TZ = 'America/Guayaquil';
+const LV = ['Unconfirmed', 'Low', 'Moderate', 'High', 'Very high'];
+const RIVER_RAIN = ['M5189', 'M5187', 'M5190', 'M1124', 'M0008']; // rain stations listed in the Napo River section
+const RIVER_LOW = 4.5, RIVER_HIGH = 6.0;
+// Values gathered online (forecast task or INAMHI stations): when present they replace anything typed, and the field is read-only
+const LOCKED = new Set(['tmax', 'tmin', 'rh', 'rainDay', 'rainNight', 'rainNt', 'rainAM', 'rainPM', 'rainEve', 'cloudAM', 'cloudPM', 'rainUp', 'tsDay', 'tsNight', 'wind', 'gust', 'windDir', 'tmaxTom', 'rainTom', 'tsTom',
+  'riverLevel', 'riverTime', 'riverChange', 'riverTrend', 'h1134', 'obsRainUp', 'riverFlowPct', 'obsRain', 'obsTmax', 'obsTd', 'obsTs',
+  'advActive', 'advTitle', 'advPeriod', 'advText', 'advSource']); // Napo at Coca (H1135), metres: below LOW = low, above HIGH = high
+const DEF_MODELS = [{ label: 'ECMWF' }, { label: 'GFS' }, { label: 'mblue AI' }];
+const DEF_CFG = { title: 'NAPO BASIN | DAILY WEATHER & HAZARD BRIEF', locations: 'Coca HQ – 17 km Napo River Corridor – Yarina FOB', issueTime: '06:30', shootDate: '2026-10-26' };
+const TXT_DEPS = {
+  txRain: ['rainDay', 'rainNight', 'tsDay', 'tsNight'], txLightning: ['tsDay', 'tsNight'], txTemp: ['tmax', 'tmin', 'rh', 'models'],
+  txWind: ['wind', 'gust', 'windDir', 'tsDay', 'tsNight'], txTomorrow: ['rainTom', 'tmaxTom', 'tsTom'], txModels: ['models'],
+  txRiver: [], txOutlook: [], txWarning: []
+};
+
+function isNum(x) { return typeof x === 'number' && isFinite(x) }
+function has(x) { return x !== undefined && x !== null && x !== '' }
+function fmt(x, d) { if (!isNum(x)) return ''; if (d !== undefined) return x.toFixed(d); return Math.abs(x - Math.round(x)) < 0.05 ? String(Math.round(x)) : x.toFixed(1) }
+function sgn(x, d) { return (x > 0 ? '+' : x < 0 ? '−' : '±') + Math.abs(x).toFixed(d === undefined ? 2 : d) }
+function addDays(date, n) { const t = new Date(date + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10) }
+function dateFmt(date, o) { return new Date(date + 'T12:00:00Z').toLocaleDateString('en-US', Object.assign({ timeZone: 'UTC' }, o)) }
+function ecNow() {
+  const p = {}; new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date()).forEach(x => p[x.type] = x.value);
+  return { date: p.year + '-' + p.month + '-' + p.day, hm: p.hour + ':' + p.minute };
+}
+function vp(T) { return 6.112 * Math.exp(17.62 * T / (243.12 + T)) }
+function heat(T, RH) {
+  if (!isNum(T) || !isNum(RH) || RH <= 0) return null;
+  RH = Math.min(RH, 100);
+  const e = vp(T) * RH / 100, g = Math.log(e / 6.112);
+  const td = 243.12 * g / (17.62 - g);
+  const hx = T + 0.5555 * (e - 10);
+  const tw = T * Math.atan(0.151977 * Math.sqrt(RH + 8.313659)) + Math.atan(T + RH) - Math.atan(RH - 1.676331) + 0.00391838 * Math.pow(RH, 1.5) * Math.atan(0.023101 * RH) - 4.686035;
+  return { rh: RH, td, hx, tw, wbShade: 0.7 * tw + 0.3 * T, wbSun: 0.567 * T + 0.393 * e + 3.94 };
+}
+function hxCat(h) { return h >= 46 ? 'dangerous' : h >= 40 ? 'great discomfort' : h >= 30 ? 'some discomfort' : 'little discomfort' }
+const F = c => Math.round(c * 9 / 5 + 32), MPH = k => Math.round(k / 1.609), INCH = mm => (mm / 25.4).toFixed(2);
+function cap(x) { x = String(x || '').trim(); return x ? x[0].toUpperCase() + x.slice(1) : x }
+function sent(x) { x = cap(x); return x && !/[.!?]$/.test(x) ? x + '.' : x }
+function cf(c, d) { return fmt(c, d) + '°C (' + F(c) + '°F)' }
+function hasEmoji(x) { return /^[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}]/u.test(String(x || '').trim()) }
+function hxLevel(h) { return h < 30 ? 'LOW' : h < 40 ? 'MODERATE' : h < 46 ? 'HIGH' : 'VERY HIGH' }
+function wbgtLevel(w) { return w < 25 ? 'LOW' : w < 28 ? 'ELEVATED' : w < 31 ? 'HIGH' : 'EXTREME' }
+const MLABEL = { mblue: 'mblue AI' };
+function tsRank(s) { const r = { none: 0, isolated: 1, scattered: 2, likely: 3 }[s]; return r === undefined ? -1 : r }
+
+// WBGT outdoors, Liljegren et al. (2008) model (as used by the US National Weather Service and Argonne's wbgt code):
+// natural wet-bulb and black-globe temperatures from air temperature, humidity, pressure, wind and solar radiation.
+const WB = (() => {
+  const SB = 5.6696e-8, Cp = 1003.5, Mair = 28.97, Mh2o = 18.015, RGAS = 8314.34, RAIR = RGAS / Mair, Pr = Cp / (Cp + 1.25 * RAIR), RATIO = Cp * Mair / Mh2o;
+  const D_G = 0.0508, EM_G = 0.95, AL_G = 0.05, D_W = 0.007, L_W = 0.0254, EM_W = 0.95, AL_W = 0.4, AL_S = 0.45, EM_S = 0.999, K = 273.15;
+  const esat = Tk => 6.1121 * Math.exp(17.502 * (Tk - K) / (Tk - 32.18)) * 1.0007 + 3.46e-6 * 0; // hPa over water (Buck)
+  const emisAtm = (Tk, rh) => 0.575 * Math.pow(rh * esat(Tk), 1 / 7);
+  const visc = Tk => { const Tr = Tk / 97.0, om = (Tr - 2.9) / 0.4 * (-0.034) + 1.048; return 2.6693e-6 * Math.sqrt(Mair * Tk) / (3.617 * 3.617 * om) };
+  const tcond = Tk => (Cp + 1.25 * RAIR) * visc(Tk);
+  const diffus = (Tk, P) => { const pc13 = Math.pow(36.4 * 218, 1 / 3), tc512 = Math.pow(132 * 647.3, 5 / 12), tc12 = Math.sqrt(132 * 647.3), mm = Math.sqrt(1 / Mair + 1 / Mh2o); return 3.64e-4 * Math.pow(Tk / tc12, 2.334) * pc13 * tc512 * mm / (P / 1013.25) * 1e-4 };
+  const evap = Tk => (313.15 - Tk) / 30 * (-71100) + 2.4073e6;
+  const hSphere = (Tk, P, u) => { const dens = P * 100 / (RAIR * Tk), Re = Math.max(u, 0.13) * dens * D_G / visc(Tk), Nu = 2 + 0.6 * Math.sqrt(Re) * Math.pow(Pr, 0.3333); return Nu * tcond(Tk) / D_G };
+  const hCyl = (Tk, P, u) => { const dens = P * 100 / (RAIR * Tk), Re = Math.max(u, 0.13) * dens * D_W / visc(Tk), Nu = 0.281 * Math.pow(Re, 0.6) * Math.pow(Pr, 0.44); return Nu * tcond(Tk) / D_W };
+  function globe(Ta, rh, P, u, S, fdir, cza) {
+    const Tk = Ta + K, ea = emisAtm(Tk, rh); let Tg = Tk;
+    for (let i = 0; i < 60; i++) {
+      const Tref = 0.5 * (Tg + Tk), h = hSphere(Tref, P, u);
+      const n = Math.pow(0.5 * (ea * Math.pow(Tk, 4) + EM_S * Math.pow(Tk, 4)) - h / (SB * EM_G) * (Tg - Tk) + S / (2 * SB * EM_G) * (1 - AL_G) * (fdir * (1 / (2 * Math.max(cza, 0.01)) - 1) + 1 + AL_S), 0.25);
+      if (Math.abs(n - Tg) < 0.02) { Tg = n; break } Tg = 0.9 * Tg + 0.1 * n;
+    }
+    return Tg - K;
+  }
+  function wetbulb(Ta, rh, P, u, S, fdir, cza) {
+    const Tk = Ta + K, ea = emisAtm(Tk, rh), eair = rh * esat(Tk), zen = Math.acos(Math.min(1, Math.max(0.01, cza)));
+    const td = (() => { const e = Math.max(eair, 0.01), g = Math.log(e / 6.112); return 243.12 * g / (17.62 - g) + K })();
+    let Tw = td;
+    for (let i = 0; i < 60; i++) {
+      const Tref = 0.5 * (Tw + Tk), h = hCyl(Tref, P, u);
+      const Fatm = SB * EM_W * (0.5 * (ea * Math.pow(Tk, 4) + EM_S * Math.pow(Tk, 4)) - Math.pow(Tw, 4)) + (1 - AL_W) * S * ((1 - fdir) * (1 + 0.25 * D_W / L_W) + fdir * ((Math.tan(zen) / Math.PI) + 0.25 * D_W / L_W) + AL_S);
+      const ew = esat(Tw), dens = P * 100 / (RAIR * Tref), Sc = visc(Tref) / (dens * diffus(Tref, P));
+      const n = Tk - evap(Tref) / RATIO * (ew - eair) / (P - ew) * Math.pow(Pr / Sc, 0.56) + Fatm / h;
+      if (Math.abs(n - Tw) < 0.02) { Tw = n; break } Tw = 0.9 * Tw + 0.1 * n;
+    }
+    return Tw - K;
+  }
+  // sun position (NOAA approximation) and solar radiation from cloud cover (Haurwitz clear sky, Kasten-Czeplak cloud factor)
+  function cosZenith(ms, lat, lon) {
+    const d = new Date(ms), doy = (Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - Date.UTC(d.getUTCFullYear(), 0, 0)) / 864e5;
+    const g = 2 * Math.PI / 365 * (doy - 1 + (d.getUTCHours() + d.getUTCMinutes() / 60 - 12) / 24);
+    const eqt = 229.18 * (0.000075 + 0.001868 * Math.cos(g) - 0.032077 * Math.sin(g) - 0.014615 * Math.cos(2 * g) - 0.040849 * Math.sin(2 * g));
+    const decl = 0.006918 - 0.399912 * Math.cos(g) + 0.070257 * Math.sin(g) - 0.006758 * Math.cos(2 * g) + 0.000907 * Math.sin(2 * g) - 0.002697 * Math.cos(3 * g) + 0.00148 * Math.sin(3 * g);
+    const tst = d.getUTCHours() * 60 + d.getUTCMinutes() + eqt + 4 * lon, ha = (tst / 4 - 180) * Math.PI / 180, la = lat * Math.PI / 180;
+    return Math.sin(la) * Math.sin(decl) + Math.cos(la) * Math.cos(decl) * Math.cos(ha);
+  }
+  function solarFromCloud(cza, cloudPct) { if (cza <= 0.01) return 0; const clear = 1098 * cza * Math.exp(-0.057 / cza), c = Math.min(1, Math.max(0, (cloudPct || 0) / 100)); return clear * (1 - 0.75 * Math.pow(c, 3.4)) }
+  function fdirOf(S, cza) { if (cza <= 0.01 || S <= 0) return 0; const smax = 1367 * cza, s = Math.min(0.85, S / smax); return s <= 0 ? 0 : Math.max(0, Math.min(0.9, Math.exp(3 - 1.34 * s - 1.65 / s))) }
+  // u10: wind at 10 m (m/s); reduced to 2 m with a daytime power law
+  function wbgt({ Ta, rh, P, u10, cloud, ms, lat, lon, solar }) {
+    const r = rh / 100, cza = cosZenith(ms, lat, lon), S = solar != null ? solar : solarFromCloud(cza, cloud), fd = fdirOf(S, cza), u2 = Math.max(0.5, (u10 || 0) * Math.pow(2 / 10, S > 0 ? 0.2 : 0.3));
+    const tg = globe(Ta, r, P, u2, S, fd, cza), tw = wetbulb(Ta, r, P, u2, S, fd, cza);
+    const tgS = globe(Ta, r, P, u2, 0, 0, cza), twS = wetbulb(Ta, r, P, u2, 0, 0, cza);
+    return { sun: 0.7 * tw + 0.2 * tg + 0.1 * Ta, shade: 0.7 * twS + 0.2 * tgS + 0.1 * Ta, tnwb: tw, tg, solar: S, u2 };
+  }
+  const stationP = (pSea, alt) => (pSea || 1013.25) * Math.pow(1 - 2.25577e-5 * alt, 5.25588);
+  return { wbgt, stationP, cosZenith, solarFromCloud };
+})();
+const COCA_LAT = -0.4628, COCA_LON = -76.9872, COCA_ALT = 250, wbMemo = new Map();
+// WBGT for today's daytime hours (06-18) at Coca: highest full-sun value and the shade value at that hour.
+// Uses the hourly forecast when gathered (temperature, humidity, sea-level pressure, wind, cloud), else the peak-heat values at 13:00.
+function calcWBGT(o) {
+  const hrs = o.get('hourly'), key = o.date + JSON.stringify(hrs || [o.n('tmax'), o.n('rh'), o.n('wind'), o.n('cloudPM')]);
+  if (wbMemo.has(key)) return wbMemo.get(key);
+  let best = null;
+  const one = (ms, Ta, rh, pSea, u10, cloud, est) => { if (!isNum(Ta) || !isNum(rh)) return; const r = WB.wbgt({ Ta, rh, P: WB.stationP(pSea, COCA_ALT), u10, cloud, ms, lat: COCA_LAT, lon: COCA_LON }); if (!best || r.sun > best.sun) best = Object.assign(r, { at: new Date(ms - 5 * 36e5).toISOString().slice(11, 16), est, Ta, rh }) };
+  if (Array.isArray(hrs) && hrs.length) hrs.forEach(h => one(Date.parse(h.ts), h.T, h.RH, isNum(h.p) ? h.p : 1012, isNum(h.ws) ? h.ws : 1.5, isNum(h.cl) ? h.cl : 50, false));
+  else if (o.n('tmax') !== null && o.n('rh') !== null) one(Date.parse(o.date + 'T18:00:00Z'), o.n('tmax'), o.n('rh'), 1012, o.n('wind') !== null ? o.n('wind') / 3.6 : 1.5, o.n('cloudPM') !== null ? o.n('cloudPM') : 50, true);
+  if (wbMemo.size > 400) wbMemo.clear(); wbMemo.set(key, best); return best;
+}
+function compute(date, doc, loc, prevDoc) {
+  const a = Object.assign({}, (doc && doc.auto && doc.auto.vals) || {}, (doc && doc.gauge && doc.gauge.vals) || {}), m = (doc && doc.man) || {}; loc = loc || {};
+  const mine = k => (k in loc) ? loc[k] : m[k];
+  const fb = (doc && doc.fb) || {};
+  const get = k => { if (LOCKED.has(k) && has(a[k])) return a[k]; const x = mine(k); return (x !== undefined && x !== null) ? x : has(a[k]) ? a[k] : fb[k] };
+  const src = k => { if (LOCKED.has(k) && has(a[k])) return 'online'; const x = mine(k); if (x !== undefined && x !== null && (has(x) || has(a[k])) && JSON.stringify(x) !== JSON.stringify(a[k])) return 'edited'; return has(a[k]) ? 'auto' : '' };
+  const n = k => { const x = get(k); return isNum(x) ? x : null };
+  const s = k => { const x = get(k); return has(x) ? String(x) : '' };
+  const o = { date, get, src, n, s, mine, auto: a };
+  const mm = get('models');
+  o.models = (Array.isArray(mm) && mm.length ? mm : DEF_MODELS).map(r => ({ label: r.label || '', tmax: isNum(r.tmax) ? r.tmax : null, rain: isNum(r.rain) ? r.rain : null, note: r.note || '' })).filter(r => !(r.label === 'ICON' && r.tmax === null && r.rain === null && !r.note));
+  const d = n('rainDay'), ni = n('rainNight');
+  // rain in four 6-hour blocks. Rolling (since 13 Oct): each block is its next occurrence, so together they cover the next 24 h; rainBlockDates gives each block's date.
+  const bd = get('rainBlockDates'), rolling = bd && typeof bd === 'object';
+  o.obsNt = !rolling && doc && isNum(doc.obsNt) ? doc.obsNt : null; o.rainNt = o.obsNt !== null ? o.obsNt : n('rainNt'); o.rainNtObs = o.obsNt !== null;
+  o.blocks = [['rainNt', 'night', '00–06', 0], ['rainAM', 'AM', '06–12', 6], ['rainPM', 'PM', '12–18', 12], ['rainEve', 'evening', '18–24', 18]].map(([k, name, hrs, h0]) => {
+    const dt = rolling && /^\d{4}-\d\d-\d\d$/.test(bd[k] || '') ? bd[k] : date;
+    return { k, name, hrs, date: dt, t: Date.parse(dt + 'T00:00:00Z') + h0 * 36e5, v: k === 'rainNt' ? o.rainNt : n(k), obs: k === 'rainNt' && o.rainNtObs };
+  }).sort((x, y) => x.t - y.t);
+  o.rain24 = (d !== null || ni !== null) ? (d || 0) + (ni || 0) : null;
+  const rs = o.models.map(r => r.rain).filter(x => x !== null); if (o.rain24 !== null) rs.push(o.rain24);
+  o.rainLo = rs.length ? Math.min.apply(null, rs) : null; o.rainHi = rs.length ? Math.max.apply(null, rs) : null;
+  const tsv = o.models.map(r => r.tmax).filter(x => x !== null); if (n('tmax') !== null) tsv.push(n('tmax'));
+  o.tLo = tsv.length ? Math.min.apply(null, tsv) : null; o.tHi = tsv.length ? Math.max.apply(null, tsv) : null;
+  o.heat = heat(n('tmax'), n('rh'));
+  o.wb = calcWBGT(o); if (o.heat && o.wb) { o.heat.wbShade = o.wb.shade; o.heat.wbSun = o.wb.sun }
+  const ot = n('obsTmax'), od = n('obsTd');
+  o.obsHeat = (ot !== null && od !== null) ? heat(ot, 100 * vp(od) / vp(ot)) : null;
+  o.tsr = Math.max(tsRank(s('tsDay')), tsRank(s('tsNight')));
+
+  // river
+  let ch = n('riverChange'); o.changeDerived = false;
+  if (ch === null && n('riverLevel') !== null && prevDoc) {
+    const p = compute(addDays(date, -1), prevDoc, null, null).n('riverLevel');
+    if (p !== null) { ch = Math.round((n('riverLevel') - p) * 100) / 100; o.changeDerived = true }
+  }
+  o.change = ch;
+  const upv = [n('obsRainUp'), n('rainUp')].filter(x => x !== null), drive = upv.length ? Math.max.apply(null, upv) : null;
+  const lcv = [n('obsRain'), o.rain24].filter(x => x !== null), local = lcv.length ? Math.max.apply(null, lcv) : null;
+  const tr = s('riverTrend');
+  let sug = '';
+  if (tr === 'rising fast' || (drive !== null && drive >= 30) || (tr === 'rising' && drive !== null && drive >= 10)) sug = 'rise likely';
+  else if ((drive !== null && drive >= 10) || (local !== null && local >= 30) || tr === 'rising' || (n('footRain12') !== null && n('footRain12') >= 8)) sug = 'rise possible';
+  else if (drive !== null || tr) sug = tr === 'falling' ? 'falling' : 'steady';
+  o.sugOutlook = sug; o.outlook = s('riverOutlook') || sug;
+
+  // suggested levels
+  const g = n('gust') !== null ? n('gust') : n('wind'), hx = o.heat ? o.heat.hx : null, R = o.rainHi;
+  const S = {};
+  S.rain = R === null ? 0 : R < 22 ? 1 : R < 32 ? 2 : R <= 60 ? 3 : 4;
+  S.lightning = o.tsr < 0 ? 0 : o.tsr === 0 ? 1 : o.tsr === 1 ? 2 : 3;
+  S.heat = hx === null ? 0 : hx < 30 ? 1 : hx < 40 ? 2 : hx < 46 ? 3 : 4;
+  const rl = n('riverLevel');
+  if (rl !== null) { S.river = rl > RIVER_HIGH ? 3 : rl < RIVER_LOW ? 1 : 2; if (tr === 'rising fast') S.river = Math.min(4, S.river + 1) }
+  else S.river = tr === 'rising fast' ? 4 : o.outlook === 'rise likely' ? 3 : (o.outlook === 'rise possible' || tr === 'rising') ? 2 : 0;
+  S.wind = g === null ? (o.tsr >= 1 ? 2 : 0) : g >= 70 ? 4 : g >= 50 ? 3 : (g >= 30 || o.tsr >= 1) ? 2 : 1;
+  o.sug = S; o.levels = {};
+  [['rain', 'lvRain'], ['lightning', 'lvLightning'], ['heat', 'lvHeat'], ['river', 'lvRiver'], ['wind', 'lvWind']].forEach(p => { const x = n(p[1]); o.levels[p[0]] = (x !== null && x >= 1 && x <= 4) ? x : S[p[0]] });
+  o.overall = Math.max(o.levels.rain, o.levels.lightning, o.levels.heat, o.levels.river, o.levels.wind);
+
+  o.gauge = (doc && doc.gauge) || null;
+  o.o5 = outlook5(o);
+  // wording: yours, else the gathered wording while its numbers are untouched, else generated
+  const GEN = { txRain: genRain, txLightning: genLightning, txTemp: genTemp, txRiver: genRiver, txWind: genWind, txOutlook: genOutlook, txModels: genModels, txTomorrow: genTomorrow, txWarning: genWarning };
+  o.tx = {}; o.txSrc = {};
+  Object.keys(GEN).forEach(k => {
+    const mv = mine(k);
+    if (has(mv)) { o.tx[k] = String(mv); o.txSrc[k] = 'edited'; return }
+    if (has(a[k]) && !TXT_DEPS[k].some(dk => src(dk) === 'edited')) { o.tx[k] = String(a[k]); o.txSrc[k] = 'auto'; return }
+    o.tx[k] = GEN[k](o); o.txSrc[k] = '';
+  });
+  return o;
+}
+
+// Five-day range for the Napo at Coca town (provisional, from the 2 to 11 Oct 2026 gauge record).
+// Low path: recession only, 0.3 m/day, slower near 4.5 m; the day after a pulse 0.6 x the rise.
+// High path: slow recession plus a rise sized by the day's forecast rain (largest of the upstream points and Coca town),
+// never less than 0.6 m above the low path, because rises of about 0.5 m came twice in ten days with no forecast or gauge signal.
+function riseFor(r) { return r === null ? 0.6 : r < 5 ? 0.1 : r < 10 ? 0.3 : r < 20 ? 0.6 : r < 35 ? 1.0 : 1.4 }
+// learned correction per lead day (1 = tomorrow ... 5), from scored past forecasts; set by the page, null = none
+let O5_CORR = null;
+function outlook5(o) {
+  const L = o.n('riverLevel'); if (L === null) return null;
+  const c = o.change, tr = o.s('riverTrend'), rising = tr === 'rising' || tr === 'rising fast', pulse = c !== null && c >= 0.4 && !rising;
+  const days = o.get('rainDays'), by = {}; if (Array.isArray(days)) days.forEach(d => { if (d && d.date) by[d.date] = d });
+  const rows = []; let lo = L, base = L, mb = L;
+  for (let k = 0; k <= 5; k++) {
+    const date = addDays(o.date, k), d = by[date];
+    const r = d ? Math.max(isNum(d.up) ? d.up : 0, isNum(d.coca) ? d.coca : 0) : null;
+    let fall = k === 0 ? (pulse ? 0.6 * c : rising ? 0 : 0.2) : (k === 1 && pulse ? 0.4 : 0.3);
+    fall *= Math.min(1.2, Math.max(0.2, lo - 4.2));
+    lo -= fall;
+    base -= k === 0 ? (pulse ? 0.3 * c : 0) : 0.1;
+    let rise = riseFor(r); if (k === 0 && rising) rise = Math.max(rise, tr === 'rising fast' ? 1.0 : 0.5);
+    const hi = Math.max(base + rise, lo + 0.6);
+    base = hi - 0.7 * rise;
+    // most likely: slower recession than the low path plus half the rain-driven rise, kept inside the range
+    const mr = r === null ? 0.15 : r < 5 ? 0 : 0.5 * riseFor(r);
+    mb -= 0.6 * fall;
+    let mid = Math.min(hi, Math.max(lo, mb + mr)); if (k === 0 && rising) mid = Math.max(mid, Math.min(hi, L + 0.1));
+    mb = mid - 0.7 * mr;
+    const cc = k > 0 && O5_CORR && isNum(O5_CORR[k]) ? O5_CORR[k] : 0;
+    rows.push({ date, lo: Math.round((lo + cc) * 10) / 10, hi: Math.round((hi + cc) * 10) / 10, mid: Math.round((mid + cc) * 10) / 10, midRaw: Math.round(mid * 100) / 100, corr: cc, rain: r === null ? null : Math.round(r) });
+  }
+  return rows;
+}
+// hist: { lvl: [[ms, m]...] hourly H1135 level, rain: { 'YYYY-MM-DD': mm } H1135 rain per 05:00-to-05:00 window, keyed by its start date }; times are Ecuador local written as UTC ms
+function o5Chart(o, sd, hist) {
+  const rows = o.o5, now = o.n('riverLevel'), LT = (d, hm) => Date.parse(d + 'T' + (hm || '17:00') + ':00Z'), DAY = 864e5;
+  const W = Math.max(300, Math.min(760, (typeof document !== 'undefined' && document.getElementById('o5chart') || {}).clientWidth || 600));
+  const narrow = W < 520, m = { l: 40, r: narrow ? 58 : 72, t: 16 }, LH = 170, GAP = 30, RH = 60;
+  const pw = W - m.l - m.r, xs = LT(addDays(o.date, -5), '05:00'), xe = LT(addDays(o.date, 6), '05:00');
+  // Coca at San Sebastián (H1134): its own panel and scale under the Napo, since it runs about 2.5 m lower
+  const o34 = ((hist && hist.lvl34) || []).filter(p => p[0] >= xs && p[0] <= xe), SH = o34.length > 1 ? 58 : 0, S0 = m.t + LH + GAP, H = m.t + LH + GAP + (SH ? SH + GAP : 0) + RH + 26;
+  const X = t => m.l + pw * (t - xs) / (xe - xs);
+  const rt = o.s('riverTime'), nowT = isNum(now) && /^\d\d:\d\d$/.test(rt) ? LT(o.date, rt) : LT(o.date, '05:00');
+  const obs = ((hist && hist.lvl) || []).filter(p => p[0] >= xs && p[0] <= nowT + 36e5);
+  // forecast points: now, then the middle (17:00) of each following 05:00-to-05:00 window
+  const fc = [[nowT, isNum(now) ? now : rows[0].lo, isNum(now) ? now : rows[0].hi, isNum(now) ? now : rows[0].mid]].concat(rows.slice(1).map(r => [LT(r.date), r.lo, r.hi, r.mid]));
+  let y0 = Math.min(RIVER_LOW - 0.3, ...fc.map(r => r[1]), ...obs.map(p => p[1])), y1 = Math.max(RIVER_HIGH + 0.3, ...fc.map(r => r[2]), ...obs.map(p => p[1]));
+  y0 = Math.floor(y0 * 2) / 2; y1 = Math.ceil(y1 * 2) / 2;
+  const Y = v => m.t + LH * (1 - (v - y0) / (y1 - y0));
+  const path = a => a.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+  const R0 = m.t + LH + GAP + (SH ? SH + GAP : 0), txt = (x, y, t, st, anc) => '<text x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '"' + (anc ? ' text-anchor="' + anc + '"' : '') + (st ? ' style="' + st + '"' : '') + '>' + t + '</text>';
+  const halo = 'paint-order:stroke;stroke:var(--card);stroke-width:4px;stroke-linejoin:round;';
+  let g = '', tl = '';
+  for (let v = y0; v <= y1 + 1e-9; v += 0.5) g += '<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + Y(v) + '" y2="' + Y(v) + '" stroke="var(--line)"/>' + txt(m.l - 6, Y(v) + 4, v.toFixed(1), '', 'end');
+  // 05:00 separators; each label sits in the middle of its window
+  for (let k = -5; k <= 5; k++) {
+    const d = addDays(o.date, k), x0 = X(LT(d, '05:00')), xc = X(LT(d));
+    if (k > -5) g += '<line x1="' + x0 + '" x2="' + x0 + '" y1="' + m.t + '" y2="' + (R0 + RH) + '" stroke="var(--line)"/>';
+    const lab = narrow ? String(Number(d.slice(8))) : k === 0 ? 'Today' : dateFmt(d, { weekday: 'short', day: 'numeric' });
+    g += txt(xc, H - 8, lab, (d === sd || k === 0) ? 'fill:var(--ink);font-weight:600' : '', 'middle');
+  }
+  [[RIVER_HIGH, 'High water 6.0 m'], [RIVER_LOW, 'Low water 4.5 m']].forEach(([v, t]) => { g += '<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + Y(v) + '" y2="' + Y(v) + '" stroke="var(--danger)" stroke-dasharray="4 4" opacity=".7"/>'; tl += txt(m.l + 4, Y(v) - 4, t, 'fill:var(--muted);font-size:11px;' + halo) });
+  const xn = X(nowT);
+  g += '<line x1="' + xn + '" x2="' + xn + '" y1="' + m.t + '" y2="' + (R0 + RH) + '" stroke="var(--ink2)" stroke-width="1"/>';
+  if (sd) { const t = LT(sd); if (t > nowT && t < xe) g += '<line x1="' + X(t) + '" x2="' + X(t) + '" y1="' + m.t + '" y2="' + (m.t + LH) + '" stroke="var(--ink2)" stroke-dasharray="2 3"/>' + txt(X(t), m.t - 4, 'Launch', 'fill:var(--ink);font-size:11px;font-weight:600', 'middle') }
+  // margin of error (low to high) as a band with thin edges, most likely level as the main line
+  const hiP = fc.map(r => [X(r[0]), Y(r[2])]), loP = fc.map(r => [X(r[0]), Y(r[1])]), miP = fc.map(r => [X(r[0]), Y(r[3])]);
+  g += '<path d="' + path(hiP) + ' ' + path(loP.slice().reverse()).replace('M', 'L') + ' Z" fill="var(--accent)" opacity=".14"/>';
+  g += '<path d="' + path(hiP) + '" fill="none" stroke="var(--accent)" stroke-width="1" stroke-dasharray="4 3" opacity=".8"/>';
+  g += '<path d="' + path(loP) + '" fill="none" stroke="var(--accent)" stroke-width="1" stroke-dasharray="4 3" opacity=".8"/>';
+  g += '<path d="' + path(miP) + '" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>';
+  miP.slice(1).forEach(p => { g += '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="3" fill="var(--accent)"/>' });
+  if (obs.length) {
+    let segs = [[]]; obs.forEach((p, i) => { if (i && p[0] - obs[i - 1][0] > 3 * 36e5) segs.push([]); segs[segs.length - 1].push([X(p[0]), Y(p[1])]) });
+    segs.filter(s => s.length > 1).forEach(s => { g += '<path d="' + path(s) + '" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round"/>' });
+    tl += txt(m.l + 4, m.t + 12, 'Observed, Napo at Coca (H1135)', 'fill:var(--ink2);font-size:11px;' + halo);
+  } else tl += txt(m.l + 4, m.t + 12, 'No observed levels stored for the past 5 days yet', 'fill:var(--muted);font-size:11px;' + halo);
+  const last = fc.length - 1, yl = [hiP[last][1], miP[last][1], loP[last][1]];
+  if (yl[1] - yl[0] < 13) yl[0] = yl[1] - 13; if (yl[2] - yl[1] < 13) yl[2] = yl[1] + 13;
+  g += txt(W - m.r + 6, yl[0] + 4, 'High ' + fmt(fc[last][2], 1), 'fill:var(--ink2);font-size:11px');
+  g += txt(W - m.r + 6, yl[1] + 4, 'Likely ' + fmt(fc[last][3], 1), 'fill:var(--ink);font-weight:600');
+  g += txt(W - m.r + 6, yl[2] + 4, 'Low ' + fmt(fc[last][1], 1), 'fill:var(--ink2);font-size:11px');
+  g += tl;
+  // earlier forecasts for the past windows and today: dot 24 h ahead, square 48 h, triangle 72 h, dash 96 h
+  const fcs = (hist && hist.fc) || [], mk = (L, x, y) => L === 1 ? '<circle cx="' + x + '" cy="' + y + '" r="3.6"/>' : L === 2 ? '<rect x="' + (x - 3.2) + '" y="' + (y - 3.2) + '" width="6.4" height="6.4"/>' : L === 3 ? '<path d="M' + x + ' ' + (y - 4.2) + 'L' + (x + 4) + ' ' + (y + 3) + 'L' + (x - 4) + ' ' + (y + 3) + 'Z"/>' : '<rect x="' + (x - 5) + '" y="' + (y - 1.3) + '" width="10" height="2.6"/>';
+  let pm = '';
+  for (let k = -5; k <= 0; k++) {
+    const d = addDays(o.date, k);
+    for (let L = 1; L <= 4; L++) {
+      const F = fcs.find(f => f.date === addDays(d, -L)), r = F && Array.isArray(F.rows) ? F.rows.find(x => x.date === d) : null;
+      if (!r || !isNum(r.mid)) continue;
+      const x = X(LT(d)) + (L - 2.5) * 7, y = Y(r.mid);
+      pm += '<g fill="var(--hi-fg)" stroke="var(--card)" stroke-width="1.2">' + mk(L, x.toFixed(1), y.toFixed(1)) + '<title>' + esc('Forecast made ' + dateFmt(F.date, { month: 'short', day: 'numeric' }) + ' (' + (24 * L) + ' h ahead) for ' + dateFmt(d, { weekday: 'short', month: 'short', day: 'numeric' }) + ': likely ' + fmt(r.mid, 1) + ' m, range ' + fmt(r.lo, 1) + '–' + fmt(r.hi, 1)) + '</title></g>';
+    }
+  }
+  g += pm;
+  if (isNum(now)) g += '<circle cx="' + xn + '" cy="' + Y(now) + '" r="5" fill="var(--accent)" stroke="var(--card)" stroke-width="2"/>';
+  if (SH) {
+    const v = o34.map(p => p[1]); let a0 = Math.floor(Math.min(...v) * 4) / 4, a1 = Math.ceil(Math.max(...v) * 4) / 4; if (a1 - a0 < 0.5) { const c = (a0 + a1) / 2; a0 = Math.floor((c - 0.25) * 4) / 4; a1 = a0 + 0.5 }
+    const SY = x => S0 + SH * (1 - (x - a0) / (a1 - a0)), step = a1 - a0 > 1 ? 0.5 : 0.25;
+    for (let x = a0; x <= a1 + 1e-9; x += step) g += '<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + SY(x).toFixed(1) + '" y2="' + SY(x).toFixed(1) + '" stroke="var(--line)"/>' + txt(m.l - 6, SY(x) + 4, x.toFixed(2), 'font-size:11px', 'end');
+    let segs = [[]]; o34.forEach((p, i) => { if (i && p[0] - o34[i - 1][0] > 3 * 36e5) segs.push([]); segs[segs.length - 1].push([X(p[0]), SY(p[1])]) });
+    segs.filter(q => q.length > 1).forEach(q => { g += '<path d="' + path(q) + '" fill="none" stroke="var(--ink2)" stroke-width="1.8" stroke-linejoin="round"/>' });
+    const lp = o34[o34.length - 1]; g += '<circle cx="' + X(lp[0]).toFixed(1) + '" cy="' + SY(lp[1]).toFixed(1) + '" r="3.5" fill="var(--ink2)" stroke="var(--card)" stroke-width="1.5"/>' + txt(X(lp[0]) + 7, SY(lp[1]) + 4, fmt(lp[1], 2) + ' m', 'fill:var(--ink2);font-size:11px;font-weight:600;' + halo);
+    g += txt(m.l, S0 - 8, narrow ? 'Coca at San Sebastián (H1134), m, observed' : 'Observed, Coca at San Sebastián (H1134), m: river feeding the Napo above Coca', 'fill:var(--ink2);font-size:11px');
+  }
+  // rain per 05:00-to-05:00 window: observed at H1135 up to today, forecast at Coca after
+  const rd = {}; (Array.isArray(o.get('rainDays')) ? o.get('rainDays') : []).forEach(d => { if (d && d.date && isNum(d.coca)) rd[d.date] = d.coca });
+  const bars = []; for (let k = -5; k <= 5; k++) { const d = addDays(o.date, k), ob = hist && hist.rain && isNum(hist.rain[d]) ? hist.rain[d] : null; bars.push({ d, k, v: k <= 0 ? ob : (isNum(rd[d]) ? rd[d] : null), f: k > 0 }) }
+  const rtop = Math.max(10, ...bars.map(b => b.v || 0)), rmax = rtop * 1.3, RY = v => R0 + RH * (1 - v / rmax), bw = Math.max(6, pw / 11 * 0.5);
+  g += '<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + (R0 + RH) + '" y2="' + (R0 + RH) + '" stroke="var(--axis)"/>';
+  bars.forEach(b => {
+    if (b.v === null) return; const xc = X(LT(b.d)), h = Math.max(b.v > 0 ? 2 : 0, R0 + RH - RY(b.v));
+    if (h > 0) g += b.f ? '<rect x="' + (xc - bw / 2 + 0.75) + '" y="' + (R0 + RH - h + 0.75) + '" width="' + (bw - 1.5) + '" height="' + Math.max(0, h - 0.75) + '" rx="2" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="3 2"/>' : '<rect x="' + (xc - bw / 2) + '" y="' + (R0 + RH - h) + '" width="' + bw + '" height="' + h + '" rx="2" fill="var(--accent)"/>';
+    if (b.v >= 1) g += txt(xc, R0 + RH - h - 3, fmt(b.v, 0), 'font-size:11px;fill:var(--ink2);' + halo, 'middle');
+  });
+  g += txt(m.l, R0 - 8, narrow ? 'Rain at Coca, mm per 05:00–05:00 day (dashed: forecast)' : 'Rain at Coca, mm per day from 05:00 to 05:00: observed at H1135, forecast dashed', 'fill:var(--ink2);font-size:11px');
+  g += txt(m.l - 6, R0 + RH + 4, '0', '', 'end');
+  for (let k = -5; k <= 5; k++) {
+    const d = addDays(o.date, k), a = LT(d, '05:00'), dl = obs.filter(p => p[0] >= a && p[0] < a + DAY).map(p => p[1]), r = rows.find(x => x.date === d), b = bars[k + 5];
+    const parts = [dateFmt(d, { weekday: 'short', month: 'short', day: 'numeric' }) + ' 05:00 to ' + dateFmt(addDays(d, 1), { weekday: 'short' }) + ' 05:00'];
+    if (dl.length) parts.push('observed ' + fmt(Math.min(...dl), 2) + '–' + fmt(Math.max(...dl), 2) + ' m');
+    { const d34 = o34.filter(p => p[0] >= a && p[0] < a + DAY).map(p => p[1]); if (d34.length) parts.push('H1134 ' + fmt(Math.min(...d34), 2) + '–' + fmt(Math.max(...d34), 2) + ' m') }
+    if (k > 0 && r) parts.push('likely ' + fmt(r.mid, 1) + ' m (range ' + fmt(r.lo, 1) + '–' + fmt(r.hi, 1) + ')');
+    if (k <= 0) for (let L = 1; L <= 4; L++) { const F = fcs.find(f => f.date === addDays(d, -L)), q = F && Array.isArray(F.rows) ? F.rows.find(x => x.date === d) : null; if (q && isNum(q.mid)) parts.push((24 * L) + ' h forecast ' + fmt(q.mid, 1) + ' m') }
+    if (k === 0 && isNum(now)) parts.push(fmt(now, 2) + ' m at ' + (o.s('riverTime') || '–'));
+    if (b.v !== null) parts.push((b.f ? 'forecast rain ' : 'rain at H1135 ') + fmt(b.v) + ' mm');
+    g += '<rect class="hit" x="' + X(a) + '" y="' + m.t + '" width="' + (X(a + DAY) - X(a)) + '" height="' + (R0 + RH - m.t) + '" fill="transparent"><title>' + esc(parts.join(', ')) + '</title></rect>';
+  }
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="Napo at Coca: observed level for the past 5 days, then the most likely level for the next 5 days with a low-to-high margin, in metres; days run 05:00 to 05:00; observed level of the Coca at San Sebastián (H1134) and daily rain at Coca below. Values in the table below.">' + g + '</svg>';
+}
+// Station map. Exact = coordinates from the INAMHI Visor station list; others approximate until read from the Visor. Rivers are schematic.
+const STMAP = {
+  H1135: { n: 'Napo at Coca town', lat: -0.473266, lon: -76.978938, lv: 1, rn: 1, exact: 1, side: 'l', tag: ' Coca' },
+  H1134: { n: 'Coca at San Sebastián', lat: -0.342844, lon: -77.007411, lv: 1, exact: 1, side: 'r' },
+  H0719: { n: 'Quijos DJ Oyacachi', lat: -0.32, lon: -77.79, lv: 1, side: 'l' },
+  H0728: { n: 'Salado AJ Coca', lat: -0.152778, lon: -77.663333, lv: 1, exact: 1, side: 'l' },
+  M5190: { n: 'CCS intake', lat: -0.17, lon: -77.64, rn: 1, side: 'b' },
+  M5187: { n: 'CCS reservoir', lat: -0.137408, lon: -77.472864, rn: 1, exact: 1, side: 'b' },
+  M5189: { n: 'CCS powerhouse', lat: -0.10, lon: -77.43, rn: 1, side: 'r' },
+  M1124: { n: 'Sierrazul', lat: -0.62, lon: -77.86, rn: 1, side: 'r' },
+  M0008: { n: 'Puyo', lat: -1.49, lon: -77.98, rn: 1, side: 'r' }
+};
+const RIVERS = [
+  ['Coca', [[-0.46, -77.89], [-0.40, -77.85], [-0.33, -77.80], [-0.25, -77.74], [-0.16, -77.66], [-0.10, -77.58], [-0.14, -77.47], [-0.22, -77.30], [-0.30, -77.12], [-0.343, -77.007], [-0.42, -76.99], [-0.468, -76.982]]],
+  ['Napo', [[-1.04, -77.80], [-1.035, -77.665], [-1.06, -77.54], [-0.95, -77.40], [-0.80, -77.25], [-0.65, -77.10], [-0.468, -76.982], [-0.478, -76.93], [-0.49, -76.88], [-0.50, -76.83], [-0.515, -76.78], [-0.53, -76.73], [-0.55, -76.67]]]
+];
+const TOWNS = [['Tena', -0.993, -77.813], ['Baeza', -0.459, -77.888], ['El Chaco', -0.339, -77.811], ['Puyo', -1.487, -77.999]];
+// a point a given distance downstream of Coca along the drawn Napo line (approximate: the drawn line is schematic)
+function napoDown(km) {
+  const pts = RIVERS[1][1], i0 = pts.findIndex(p => p[0] === -0.468 && p[1] === -76.982), d = (a, b) => 111.2 * Math.hypot(a[0] - b[0], a[1] - b[1]);
+  let left = km;
+  for (let i = i0; i < pts.length - 1; i++) { const seg = d(pts[i], pts[i + 1]); if (left <= seg) { const f = left / seg; return [pts[i][0] + f * (pts[i + 1][0] - pts[i][0]), pts[i][1] + f * (pts[i + 1][1] - pts[i][1])] } left -= seg }
+  return pts[pts.length - 1];
+}
+const SITES = [['Yarina lodge', 17, 'b'], ['Launch site', 24, 't']];
+function stationMap(gg) {
+  if (typeof window !== 'undefined' && window.NAA_COORDS) Object.entries(window.NAA_COORDS).forEach(([c, v]) => { if (STMAP[c] && isFinite(v.lat) && isFinite(v.lon)) { STMAP[c].lat = v.lat; STMAP[c].lon = v.lon; STMAP[c].exact = 1 } });
+  const W = Math.max(300, Math.min(760, (typeof document !== 'undefined' && document.getElementById('stations') || {}).clientWidth || 700));
+  const b = W < 520 ? { n: -0.02, s: -1.56, w: -78.12, e: -76.38 } : { n: -0.02, s: -1.56, w: -78.3, e: -76.2 }, pad = 10, sc = (W - 2 * pad) / (b.e - b.w), H = Math.round((b.n - b.s) * sc + 2 * pad);
+  const X = lon => pad + (lon - b.w) * sc, Y = lat => pad + (b.n - lat) * sc, fs = W < 420 ? 10 : 11;
+  const lv = {}, rn = {}; ((gg && gg.levels) || []).forEach(s => { lv[s.code] = s }); ((gg && gg.rain) || []).forEach(s => { rn[s.code] = s });
+  const halo = 'paint-order:stroke;stroke:var(--card);stroke-width:3.5px;stroke-linejoin:round;';
+  let g = '<rect x="0" y="0" width="' + W + '" height="' + H + '" rx="6" fill="var(--field)" stroke="var(--line)"/>';
+  RIVERS.forEach(([name, pts]) => {
+    g += '<path d="' + pts.map((p, i) => (i ? 'L' : 'M') + X(p[1]).toFixed(1) + ' ' + Y(p[0]).toFixed(1)).join(' ') + '" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" opacity=".45"/>';
+    const m = pts[name === 'Coca' ? 7 : 3];
+    g += '<text x="' + (X(m[1]) + 6) + '" y="' + (Y(m[0]) + 14) + '" style="font-size:' + fs + 'px;font-style:italic;fill:var(--accent);' + halo + '">' + name + '</text>';
+  });
+  TOWNS.forEach(([t, la, lo]) => { g += '<circle cx="' + X(lo) + '" cy="' + Y(la) + '" r="2" fill="var(--muted)"/><text x="' + (X(lo) - 5) + '" y="' + (Y(la) + 12) + '" text-anchor="end" style="font-size:' + fs + 'px;fill:var(--muted);' + halo + '">' + t + '</text>' });
+  Object.entries(STMAP).forEach(([code, s]) => {
+    const x = X(s.lon), y = Y(s.lat), L = lv[code], R = rn[code];
+    const val = [L && isNum(L.now) ? fmt(L.now, 2) + ' m' : '', R && isNum(R.r24) ? fmt(R.r24) + ' mm' : ''].filter(Boolean).join(', ');
+    if (s.rn && !s.lv) g += '<path d="M' + x + ' ' + (y - 6) + 'L' + (x + 5.5) + ' ' + (y + 4) + 'L' + (x - 5.5) + ' ' + (y + 4) + 'Z" fill="var(--warn-fg)" stroke="var(--card)" stroke-width="1.5"/>';
+    else g += '<circle cx="' + x + '" cy="' + y + '" r="5.5" fill="var(--ink)" stroke="var(--card)" stroke-width="2"/>' + (s.rn ? '<circle cx="' + x + '" cy="' + y + '" r="2" fill="var(--warn-bg)"/>' : '');
+    const side = s.side, tx = side === 'l' ? x - 9 : side === 'r' ? x + 9 : x, ty = side === 't' ? y - 18 : side === 'b' ? y + 16 : y - 3, anc = side === 'l' ? 'end' : side === 'r' ? 'start' : 'middle';
+    g += '<text x="' + tx + '" y="' + ty + '" text-anchor="' + anc + '" style="font-size:' + fs + 'px;font-weight:600;fill:var(--ink);' + halo + '">' + code + (s.exact ? '' : '*') + (s.tag || '') + '</text>';
+    if (val) g += '<text x="' + tx + '" y="' + (ty + fs + 2) + '" text-anchor="' + anc + '" style="font-size:' + fs + 'px;fill:var(--ink2);' + halo + '">' + val + '</text>';
+    g += '<circle cx="' + x + '" cy="' + y + '" r="12" fill="transparent"><title>' + esc(code + ' ' + s.n + (val ? ': ' + val : '') + (s.exact ? '' : ' (position approximate)')) + '</title></circle>';
+  });
+  SITES.forEach(([name, km, side], i) => {
+    const [la, lo] = napoDown(km), x = X(lo), y = Y(la);
+    g += i === 0 ? '<rect x="' + (x - 5) + '" y="' + (y - 5) + '" width="10" height="10" rx="2" fill="var(--accent)" stroke="var(--card)" stroke-width="2"/>'
+      : '<path d="M' + x + ' ' + (y - 7) + 'L' + (x + 6.5) + ' ' + y + 'L' + x + ' ' + (y + 7) + 'L' + (x - 6.5) + ' ' + y + 'Z" fill="var(--danger)" stroke="var(--card)" stroke-width="2"/>';
+    const ax = X(napoDown(SITES[0][1])[1]) - 4, ly = Y(napoDown(SITES[0][1])[0]) + 20 + i * (2 * fs + 6);
+    g += '<text x="' + ax + '" y="' + ly + '" style="font-size:' + fs + 'px;font-weight:600;fill:var(--ink);' + halo + '">' + name + '</text>';
+    g += '<text x="' + ax + '" y="' + (ly + fs + 2) + '" style="font-size:' + fs + 'px;fill:var(--ink2);' + halo + '">' + km + ' km by river</text>';
+    g += '<circle cx="' + x + '" cy="' + y + '" r="12" fill="transparent"><title>' + esc(name + ', about ' + km + ' km downstream of Coca on the Napo (position approximate)') + '</title></circle>';
+  });
+  // scale bar, 20 km (1 degree ~ 111 km)
+  const km = 20 / 111 * sc; g += '<line x1="' + (W - pad - 8 - km) + '" x2="' + (W - pad - 8) + '" y1="' + (H - 14) + '" y2="' + (H - 14) + '" stroke="var(--ink2)" stroke-width="2"/><text x="' + (W - pad - 8 - km / 2) + '" y="' + (H - 20) + '" text-anchor="middle" style="font-size:' + fs + 'px;fill:var(--ink2)">20 km</text>';
+  g += '<text x="' + (W - pad - 4) + '" y="' + (pad + 14) + '" text-anchor="end" style="font-size:' + (fs + 1) + 'px;font-weight:600;fill:var(--ink2)">N ↑</text>';
+  return '<figure class="stmap"><svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="Map of the INAMHI stations used: level stations on the Coca and Napo rivers and rain stations in the Coca valley, Sierrazul and Puyo.">' + g + '</svg>' +
+    '<figcaption class="tiny">● level station (with dot: also rain) · ▲ rain station · ■ Yarina lodge · ◆ launch site · values: latest level and 24 h rain. * and the two sites: position approximate. Rivers drawn schematically.</figcaption></figure>';
+}
+function trendWord(rate) { return rate >= 0.1 ? 'rising fast' : rate >= 0.03 ? 'rising' : rate <= -0.03 ? 'falling' : 'steady' }
+
+function genRain(o) {
+  const d = o.n('rainDay'), ni = o.n('rainNight'), p = [];
+  if (d === null && ni === null) return 'Rainfall forecast not confirmed.';
+  if (d !== null) p.push(d < 0.5 ? 'Mostly dry during the day.' : d < 3 ? 'Generally light and intermittent daytime rainfall.' : d < 10 ? 'Showers at times during the day.' : d < 22 ? 'Periods of rain during the day.' : d < 32 ? 'Moderate to heavy rain during the day.' : 'Heavy rain during the day.');
+  const td = o.s('tsDay');
+  if (td === 'isolated') p.push('Isolated afternoon thunderstorms possible.'); else if (td === 'scattered') p.push('Scattered thunderstorms expected.'); else if (td === 'likely') p.push('Thunderstorms likely.');
+  if (ni !== null) p.push(ni < 0.5 ? 'Mostly dry overnight.' : (ni >= 5 && ni > (d || 0) + 3) ? 'Increasing rainfall expected overnight into ' + dateFmt(addDays(o.date, 1), { weekday: 'long' }) + '.' : ni < 3 ? 'Light rain possible overnight.' : ni < 10 ? 'Showers continuing overnight.' : 'Rain continuing overnight, heavy at times.');
+  return p.join(' ');
+}
+function genLightning(o) {
+  const d = tsRank(o.s('tsDay')), n = tsRank(o.s('tsNight'));
+  if (d < 0 && n < 0) return 'Thunderstorm potential not confirmed.';
+  if (d <= 0 && n <= 0) return 'Low thunderstorm potential today and tonight.';
+  if (d <= 0) return 'Low thunderstorm potential during the day. ' + (n === 1 ? 'Isolated storms possible overnight.' : 'Thunderstorms expected overnight.');
+  const lead = d === 1 ? 'Thunderstorm potential this afternoon' : d === 2 ? 'Thunderstorms expected this afternoon' : 'Thunderstorms likely today';
+  return lead + (n <= 0 ? ', easing overnight.' : n > d ? ', with increasing activity possible overnight.' : n === 1 ? ', with isolated storms possible overnight.' : ', continuing overnight.');
+}
+function genTemp(o) {
+  if (o.tHi === null) return 'Temperature forecast not confirmed.';
+  const nm = o.models.filter(r => r.tmax !== null).length;
+  const rng = (o.tLo !== null && o.tHi - o.tLo >= 1) ? fmt(o.tLo, 0) + '–' + fmt(o.tHi, 0) + '°C (' + F(o.tLo) + '–' + F(o.tHi) + '°F)' : cf(o.tHi, 0);
+  let t = 'Maximum ' + rng + (nm >= 2 ? ' across the ' + (['', '', 'two', 'three', 'four', 'five', 'six'][nm] || nm) + ' forecast models.' : '.');
+  const hx = o.heat ? o.heat.hx : null;
+  if (hx !== null) t += hx >= 40 ? ' Hot and humid afternoon expected.' : hx >= 30 ? ' Warm and humid afternoon expected.' : ' Comfortable afternoon expected.';
+  if (o.n('tmin') !== null) t += ' Overnight low ' + cf(o.n('tmin')) + '.';
+  return t;
+}
+function genRiver(o) {
+  const lv = o.n('riverLevel'), p = [];
+  if (lv === null) p.push('Current water level and trend remain unverified.');
+  else {
+    let t = 'Napo at Coca (H1135): ' + fmt(lv, 2) + ' m' + (o.s('riverTime') ? ' at ' + o.s('riverTime') : '');
+    if (o.change !== null) t += ', ' + sgn(o.change) + ' m in 24 h';
+    if (o.s('riverTrend')) t += ', ' + o.s('riverTrend');
+    p.push(t + '.');
+  }
+  const NAMES = { elChaco: 'El Chaco (upper Coca valley)', jatunyacu: 'Jatunyacu (upper Napo headwaters)', tena: 'Tena (upper Napo foothills)', loreto: 'Loreto (Suno and Payamino side)' };
+  const pts = o.get('rainUpPts'), list = pts && typeof pts === 'object' ? Object.keys(NAMES).filter(k => isNum(pts[k])).sort((a, b) => pts[b] - pts[a]) : [];
+  if (list.length) {
+    p.push('Forecast 24-hour precipitation at upstream points (Yr, ECMWF-based): ' + list.map(k => NAMES[k] + ' ' + fmt(pts[k]) + ' mm (' + INCH(pts[k]) + ' in)').join(', ') + '.');
+    p.push('These are single points within the headwaters, not a rainfall estimate for the entire Napo River catchment, which is extensive.');
+  } else if (o.n('rainUp') !== null) {
+    p.push('Forecast 24-hour precipitation upstream: up to ' + fmt(o.n('rainUp')) + ' mm (' + INCH(o.n('rainUp')) + ' in) at a single headwater point, not a catchment total.');
+  }
+  if (o.n('obsRainUp') !== null) p.push('INAMHI stations recorded up to ' + fmt(o.n('obsRainUp')) + ' mm (' + INCH(o.n('obsRainUp')) + ' in) upstream in the last 24 h.');
+  p.push('Potential river response depends on rainfall distribution, upstream tributaries and runoff timing.');
+  const OUT = { 'rise likely': 'Outlook, next 24 h: rise likely. Expect floating debris, stronger current and changing landing conditions; low sand bars may flood.', 'rise possible': 'Outlook, next 24 h: rise possible. Monitor for delayed runoff, floating debris and changing landing conditions.', falling: 'Outlook, next 24 h: falling. Watch for shallow sand bars and changed landings.', steady: 'Outlook, next 24 h: little change expected.' };
+  if (OUT[o.outlook]) p.push(OUT[o.outlook]);
+  if (o.o5 && o.o5[1]) p.push('Water-level forecast for tomorrow (05:00 to 05:00): likely ' + fmt(o.o5[1].mid, 1) + ' m at Coca, range ' + fmt(o.o5[1].lo, 1) + '–' + fmt(o.o5[1].hi, 1) + ' m. Provisional model, still under calibration.');
+  else p.push('Water-level forecasting model: STILL UNDER CONSTRUCTION.');
+  const q = o.n('riverFlowPct');
+  if (q !== null) p.push('GEOGLOWS modelled flow: ' + sgn(q, 0) + '% over 24 h (trend only).');
+  return p.join('\n\n');
+}
+const DIRW = { N: 'north', NNE: 'north-northeast', NE: 'northeast', ENE: 'east-northeast', E: 'east', ESE: 'east-southeast', SE: 'southeast', SSE: 'south-southeast', S: 'south', SSW: 'south-southwest', SW: 'southwest', WSW: 'west-southwest', W: 'west', WNW: 'west-northwest', NW: 'northwest', NNW: 'north-northwest' };
+// wind direction as a compass code (where the wind blows FROM); accepts a code or degrees
+function windDir(o) {
+  let x = o.get('windDir'); if (!has(x)) { const d = o.n('windDirDeg'); if (d === null) return ''; x = d }
+  if (isNum(x) || /^\d+(\.\d+)?$/.test(String(x))) { const k = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW']; return k[Math.round(((+x % 360) + 360) % 360 / 22.5) % 16] }
+  x = String(x).trim().toUpperCase(); return x === 'VAR' || x === 'VRB' ? 'variable' : x;
+}
+// cloud cover, percent of sky (mean over the block)
+function cloudWord(c) { return c < 20 ? 'clear' : c < 50 ? 'partly cloudy' : c < 85 ? 'mostly cloudy' : 'overcast' }
+function cloudInfo(o) {
+  const a = o.n('cloudAM'), p = o.n('cloudPM'); if (a === null && p === null) return null;
+  const m = a !== null && p !== null ? (a + p) / 2 : (a !== null ? a : p);
+  return { am: a, pm: p, mean: m, word: cloudWord(m) };
+}
+function windFrom(o) { const c = windDir(o); return !c ? '' : c === 'variable' ? 'variable in direction' : 'from the ' + (DIRW[c] || c) + (DIRW[c] ? ' (' + c + ')' : '') }
+function genWind(o) {
+  const w = o.n('wind'), g = o.n('gust'), p = [];
+  const fr = windFrom(o), wf = fr ? ', ' + fr + '.' : '.';
+  if (w !== null) p.push(w < 12 ? 'Generally light, 0–' + fmt(w) + ' km/h (0–' + MPH(w) + ' mph)' + wf : w < 30 ? 'Light to moderate, up to ' + fmt(w) + ' km/h (' + MPH(w) + ' mph)' + wf : 'Moderate to strong, up to ' + fmt(w) + ' km/h (' + MPH(w) + ' mph)' + wf);
+  else if (fr) p.push('Wind ' + fr + '.');
+  if (g !== null) p.push('Gusts around ' + fmt(g) + ' km/h (' + MPH(g) + ' mph)' + (o.tsr >= 1 ? ', with stronger localized gusts possible during thunderstorms.' : '.'));
+  else if (o.tsr >= 1) p.push('Stronger localized gusts possible during thunderstorms.');
+  return p.length ? p.join(' ') : 'Wind forecast not confirmed.';
+}
+function genOutlook(o) {
+  const L = o.levels, mx = o.overall, d = tsRank(o.s('tsDay')), n = tsRank(o.s('tsNight')), p = [];
+  if (mx === 0) return '⚠️ Hazard assessment incomplete: confirm forecast and river conditions before operations.';
+  p.push('⚠️ ' + (d >= 1 ? 'Relatively favourable weather conditions this morning, with ' + (d >= 2 ? 'thunderstorms expected' : 'increasing lightning and thunderstorm potential') + ' from midday onward.'
+    : n >= 1 ? 'Favourable weather conditions during the day, with thunderstorm potential overnight.'
+    : mx <= 1 ? 'Favourable weather conditions expected.' : mx === 2 ? 'Workable conditions with some hazards to monitor.' : 'Hazardous conditions possible today.'));
+  const rl = o.n('riverLevel');
+  p.push('🚤 ' + (rl === null ? 'River level, floating debris, current and landing access require local verification.'
+    : (L.river >= 3 || o.outlook === 'rise likely') ? 'River rise or high water: check floating debris, current, sand bars and landing access before dispatch.'
+    : 'River at ' + fmt(rl, 2) + ' m' + (o.s('riverTrend') ? ', ' + o.s('riverTrend') : '') + ': floating debris, current and landing access still require local verification.'));
+  if (o.tsr >= 1) p.push('🌳 ' + (d >= 1 ? 'Afternoon thunderstorms' : 'Thunderstorms') + ' may bring heavy localized rainfall, gusty winds and reduced trail accessibility.');
+  if (L.heat >= 3) p.push('🥵 High heat stress during afternoon work: plan rest, shade and hydration.');
+  if (L.rain >= 3) p.push('🌧️ Heavy rain may reduce visibility on the river and flood low ground.');
+  if (L.wind >= 3) p.push('💨 Strong gusts: secure loose equipment and review boat operations.');
+  return p.join('\n\n');
+}
+function genModels(o) {
+  const t = o.models.map(r => r.tmax).filter(x => x !== null), r = o.models.map(x => x.rain).filter(x => x !== null), p = [];
+  if (t.length < 2 && r.length < 2) return '';
+  if (t.length >= 2) { const a = Math.min.apply(null, t), b = Math.max.apply(null, t); p.push(b - a <= 2 ? 'Models agree on a maximum near ' + fmt((a + b) / 2) + '°C.' : 'Maximum temperature ranges from ' + fmt(a) + ' to ' + fmt(b) + '°C between models.') }
+  if (r.length >= 2) { const a = Math.min.apply(null, r), b = Math.max.apply(null, r); p.push((b - a <= 5 || (a > 0 && b / a <= 2)) ? 'Rainfall totals are consistent at ' + fmt(a) + ' to ' + fmt(b) + ' mm in 24 h.' : 'Rainfall totals differ, ' + fmt(a) + ' to ' + fmt(b) + ' mm in 24 h: plan for the wetter scenario.') }
+  return p.join(' ');
+}
+function genTomorrow(o) {
+  const rt = o.n('rainTom'), ts = tsRank(o.s('tsTom')), t = o.n('tmaxTom'), p = [], mm = rt !== null ? ' (about ' + fmt(rt) + ' mm)' : '';
+  if (ts >= 2 || (ts >= 1 && rt !== null && rt >= 10)) p.push('⛈️ Rain and thunderstorms expected' + mm + '.');
+  else if (ts === 1) p.push('🌦️ Showers with isolated thunderstorms possible' + mm + '.');
+  else if (rt !== null && rt >= 3) p.push('🌧️ Showers expected' + mm + '.');
+  else if (rt !== null) p.push('🌤️ Mostly dry' + mm + '.');
+  if (t !== null) p.push('🌡️ Maximum ' + cf(t, 0) + (t >= 30 ? ', hot and humid conditions continuing.' : '.'));
+  if ((rt !== null && rt >= 10) || (o.rain24 !== null && o.rain24 >= 10) || (o.n('rainUp') !== null && o.n('rainUp') >= 10) || o.outlook.indexOf('rise') === 0) p.push('🌊 Monitor river response to accumulated rainfall.');
+  return p.length ? p.join('\n') : 'Outlook for tomorrow not confirmed.';
+}
+function genWarning(o) {
+  if (o.levels.lightning >= 2) return 'Thunderstorms may produce intense localized rainfall, frequent lightning and sudden wind gusts.';
+  if (o.levels.rain >= 3) return 'Heavy rainfall may cause rapid water accumulation and river-level fluctuations.';
+  return '';
+}
+// The value behind each hazard level and the band it falls in
+function levelDetail(o) {
+  const d = {}, h = o.heat, rl = o.n('riverLevel'), g = o.n('gust'), w = o.n('wind'), ts = { none: 'none', isolated: 'isolated', scattered: 'scattered', likely: 'likely' };
+  d.rain = o.rainHi === null ? { v: '', b: '' } : { v: (o.rainHi - o.rainLo >= 1 ? fmt(o.rainLo) + '–' + fmt(o.rainHi) : fmt(o.rainHi)) + ' mm/24 h', b: o.rainHi < 22 ? 'under 22 mm' : o.rainHi < 32 ? '22–31 mm' : o.rainHi <= 60 ? '32–60 mm' : 'over 60 mm' };
+  const td = ts[o.s('tsDay')], tn = ts[o.s('tsNight')];
+  d.lightning = (!td && !tn) ? { v: '', b: '' } : { v: 'storms: day ' + (td || '–') + ', night ' + (tn || '–'), b: '' };
+  d.heat = !h ? { v: '', b: '' } : { v: 'humidex ' + fmt(h.hx, 0), b: h.hx < 30 ? 'under 30' : h.hx < 40 ? '30–39' : h.hx < 46 ? '40–45' : '46 and over' };
+  d.river = rl === null ? { v: '', b: '' } : { v: fmt(rl, 2) + ' m' + (o.s('riverTrend') ? ', ' + o.s('riverTrend') : ''), b: (rl < RIVER_LOW ? 'under 4.5 m' : rl > RIVER_HIGH ? 'over 6.0 m' : '4.5–6.0 m') + (o.s('riverTrend') === 'rising fast' ? ', +1 for rising fast' : '') };
+  const gw = g !== null ? g : w;
+  const wd = windDir(o), wds = wd ? (wd === 'variable' ? 'direction variable' : 'from ' + wd) : 'direction not gathered';
+  const ws = [w !== null ? fmt(w) + ' km/h' : '', g !== null ? 'gusts ' + fmt(g) + ' km/h' : ''].filter(Boolean).join(', ');
+  d.wind = gw === null ? { v: o.tsr >= 1 ? 'thunderstorm gusts' : '', b: '', dir: wd ? (wd === 'variable' ? 'VRB' : wd) : '' } : { v: ws, dir: wd ? (wd === 'variable' ? 'VRB' : wd) : '', b: (g !== null ? 'gusts ' : '') + (gw < 30 ? 'under 30 km/h' : gw < 50 ? '30–49 km/h' : gw < 70 ? '50–69 km/h' : '70 km/h and over') + (o.tsr >= 1 && gw < 30 ? ', raised: storm gusts' : '') };
+  return d;
+}
+function levelLine(o) { const d = levelDetail(o); return [['Rain', 'rain'], ['Lightning', 'lightning'], ['Heat', 'heat'], ['River', 'river'], ['Wind', 'wind']].map(p => p[0] + ': ' + LV[o.levels[p[1]]] + (p[1] === 'wind' ? ' from ' + (d.wind.dir || 'direction not gathered') : '') + (d[p[1]].v ? ' (' + d[p[1]].v + (d[p[1]].b ? '; ' + d[p[1]].b : '') + ')' : '')).join(' | ') }
+
+function briefText(o, cfg) {
+  const L = [], tom = addDays(o.date, 1);
+  L.push(cfg.title, dateFmt(o.date, { weekday: 'long', month: 'long', day: 'numeric' }) + ' | Morning Brief', cfg.locations, '', 'TODAY’S FORECAST', '');
+  L.push('🌦️ Rain: ' + o.tx.txRain);
+  if (o.blocks.some(b => b.v !== null)) L.push('🌧️ Rain at Coca, next 24 h: ' + o.blocks.map(b => b.name + ' ' + b.hrs + (b.date !== o.date ? ' (' + dateFmt(b.date, { weekday: 'short', month: 'short', day: 'numeric' }) + ')' : '') + ' ' + (b.v !== null ? fmt(b.v) + ' mm' + (b.obs ? ' (observed)' : '') : '–')).join(' | ') + '.');
+  if (false) L.push('🌧️ Rain at Coca today: night 00–06 ' + (o.rainNt !== null ? fmt(o.rainNt) + ' mm' + (o.rainNtObs ? ' (observed)' : '') : '–') + ' | AM 06–12 ' + (o.n('rainAM') !== null ? fmt(o.n('rainAM')) + ' mm' : '–') + ' | PM 12–18 ' + (o.n('rainPM') !== null ? fmt(o.n('rainPM')) + ' mm' : '–') + ' | evening 18–24 ' + (o.n('rainEve') !== null ? fmt(o.n('rainEve')) + ' mm' : '–') + '.');
+  { const c = cloudInfo(o); if (c) L.push('☁️ Cloud cover: ' + [c.am !== null ? 'AM ' + fmt(c.am, 0) + '% (' + cloudWord(c.am) + ')' : '', c.pm !== null ? 'PM ' + fmt(c.pm, 0) + '% (' + cloudWord(c.pm) + ')' : ''].filter(Boolean).join(', ') + '.') }
+  L.push('', '⚡ Lightning: ' + o.tx.txLightning, '', '🌡️ Temperature: ' + o.tx.txTemp);
+  const h = o.heat;
+  if (h) {
+    const off = h.hx - o.n('tmax'), lo = (o.tLo !== null ? o.tLo : o.n('tmax')) + off, hi = Math.max(h.hx, (o.tHi !== null ? o.tHi : o.n('tmax')) + off);
+    L.push('', '🥵 HEAT / HUMIDITY', 'Humidex: Approximately ' + (hi - lo >= 1 ? fmt(lo, 0) + '–' + fmt(hi, 0) : fmt(hi, 0)) + ' during peak afternoon heat, based on forecast temperature and dew point near ' + cf(h.td, 0) + '. Hazard: ' + hxLevel(hi) + ' for strenuous physical activity.', '');
+    const wr = o.n('wbgt');
+    L.push(wr !== null ? 'WBGT: ' + cf(wr) + ', reported value. Heat-stress concern: ' + wbgtLevel(wr) + '.'
+      : 'WBGT: about ' + cf(h.wbSun, 0) + ' in full sun and ' + cf(h.wbShade, 0) + ' in shade' + (o.wb ? ', peak around ' + o.wb.at : '') + ', calculated with the Liljegren model from forecast temperature, humidity, pressure, wind and cloud cover' + (o.wb && o.wb.est ? ' (peak-heat values; hourly forecast not gathered)' : '') + '. Heat-stress concern in full sun: ' + wbgtLevel(h.wbSun) + '.');
+    L.push('', 'WBGT (Wet Bulb Globe Temperature) accounts for temperature, humidity, radiant heat and wind. It is more useful than Humidex for assessing occupational heat exposure. Actual risk depends on workload, acclimatization and sun exposure.');
+  }
+  const rv = String(o.tx.txRiver || '').split(/\n\s*\n/);
+  L.push('', '🌊 NAPO RIVER', rv[0]);
+  const g = o.gauge;
+  if (g && Array.isArray(g.levels) && g.levels.length) {
+    L.push('', 'INAMHI stations, read ' + String(g.fetchedAt || '').slice(11, 16) + ':');
+    g.levels.forEach(s => L.push('• ' + s.name + ' (' + s.code + '): ' + fmt(s.now, 2) + ' m at ' + s.at + (isNum(s.ch24) ? ', ' + sgn(s.ch24) + ' m in 24 h' : '') + (isNum(s.ch3) ? ', ' + trendWord(s.ch3 / 3) : '') + '.'));
+    const rs = (Array.isArray(g.rain) ? g.rain : []).filter(r => RIVER_RAIN.indexOf(r.code) >= 0);
+    if (rs.length) {
+      L.push('• Rain, last 24 h: ' + rs.map(r => r.name + ' ' + fmt(r.r24) + ' mm').join(' | ') + '.');
+      const wet = rs.filter(r => isNum(r.r12) && r.r12 >= 1);
+      if (wet.length) L.push('• Rain, last 12 h: ' + wet.map(r => r.name + ' ' + fmt(r.r12) + ' mm').join(' | ') + '.');
+    }
+  }
+  rv.slice(1).forEach(x => { if (x.trim()) L.push('', x.trim()) });
+  L.push('', '💨 Wind: ' + o.tx.txWind);
+  const ot = String(o.tx.txOutlook || '');
+  L.push('', 'OPERATIONAL OUTLOOK', '', hasEmoji(ot) ? ot : '⚠️ ' + ot, '');
+  const rows = o.models.filter(r => r.label && (r.tmax !== null || r.rain !== null || r.note));
+  if (rows.length) {
+    L.push('MODEL COMPARISON', '');
+    rows.forEach(r => { L.push((MLABEL[r.label] || r.label) + ': ' + [r.tmax !== null ? cf(r.tmax, 0) + '.' : '', r.rain !== null ? fmt(r.rain) + ' mm (' + INCH(r.rain) + ' in) in 24 h.' : '', r.note ? sent(r.note) : ''].filter(Boolean).join(' '), '') });
+    if (o.tx.txModels) L.push('Consensus: ' + o.tx.txModels, '');
+  }
+  L.push('TOMORROW | ' + dateFmt(tom, { weekday: 'long' }).toUpperCase() + ' ' + Number(tom.slice(8)), '', o.tx.txTomorrow);
+  const adv = cfg.advisory !== false, act = adv && o.get('advActive') === true;
+  if (adv || o.tx.txWarning) L.push('', '⚠️ WEATHER WARNING ADVISORY', '');
+  if (act) {
+    const src = o.s('advSource'), iss = src ? src.split(/,|\s+as reported|\s+\(/)[0].trim() : (o.s('advTitle') || 'Official advisory');
+    L.push(iss + (o.s('advPeriod') ? ' | ' + o.s('advPeriod') : '') + '.');
+    const ICON = [[/amazon|orellana/i, '🌧️ '], [/^peak/i, '⛈️ '], [/hazard/i, '⚡ ']];
+    o.s('advText').split('\n').map(x => x.trim()).filter(Boolean).forEach(x => { const ic = hasEmoji(x) ? null : ICON.find(p => p[0].test(x)); L.push('', (ic ? ic[1] : '') + x) });
+  } else {
+    if (o.tx.txWarning) L.push('⚠️ ' + o.tx.txWarning, '');
+    if (adv) L.push((o.get('advChecked') === true || o.get('advActive') === false) ? 'No official weather advisory in force for Orellana identified at time of issue.' : 'Official advisories not checked.');
+  }
+  const ob = [];
+  if (o.n('obsRain') !== null) ob.push('Rain at Coca: ' + fmt(o.n('obsRain')) + ' mm');
+  if (o.n('obsTmax') !== null) ob.push('Max temp: ' + cf(o.n('obsTmax')) + (o.obsHeat ? ' (humidex ' + fmt(o.obsHeat.hx, 0) + ')' : ''));
+  if (o.s('obsTs')) ob.push('Thunderstorms: ' + o.s('obsTs'));
+  if (ob.length || o.s('obsNote')) { L.push('', 'OBSERVED, LAST 24 H', ''); if (ob.length) L.push(ob.join(' | ')); if (o.s('obsNote')) L.push(o.s('obsNote')) }
+  if (o.s('notes')) L.push('', 'NOTES', '', o.s('notes'));
+  return L.join('\n');
+}
+function r1(x) { return isNum(x) ? Math.round(x * 10) / 10 : null }
+function record(o) {
+  const h = o.heat || {}, oh = o.obsHeat || {};
+  return {
+    tmax: o.n('tmax'), tmin: o.n('tmin'), rh: o.n('rh'), dewPoint: r1(h.td), wetBulb: r1(h.tw), humidex: r1(h.hx), wbgtShade: r1(h.wbShade), wbgtSun: r1(h.wbSun), wbgtReported: o.n('wbgt'),
+    rainDay: o.n('rainDay'), rainNight: o.n('rainNight'), rainNt: o.rainNt, rainNtObserved: o.rainNtObs, rainAM: o.n('rainAM'), rainPM: o.n('rainPM'), rainEve: o.n('rainEve'), rainBlockDates: o.blocks.map(b => b.k.slice(4) + ':' + b.date.slice(5)).join(' '), cloudAM: o.n('cloudAM'), cloudPM: o.n('cloudPM'), rain24: r1(o.rain24), rainLo: r1(o.rainLo), rainHi: r1(o.rainHi), rainUp: o.n('rainUp'), rainTom: o.n('rainTom'),
+    tsDay: o.s('tsDay'), tsNight: o.s('tsNight'), wind: o.n('wind'), gust: o.n('gust'), windDir: windDir(o) || null,
+    riverLevel: o.n('riverLevel'), riverTime: o.s('riverTime'), riverChange: o.change, riverTrend: o.s('riverTrend'), riverOutlook: o.outlook, o5: o.o5 ? o.o5.slice(1).map(r => ({ date: r.date, lo: r.lo, hi: r.hi, mid: r.mid })) : null, expMid: o.o5 ? o.o5[1].mid : null, expLo: o.o5 ? o.o5[1].lo : null, expHi: o.o5 ? o.o5[1].hi : null, h1134: o.n('h1134'), riverFlowPct: o.n('riverFlowPct'),
+    obsRain: o.n('obsRain'), obsRainUp: o.n('obsRainUp'), obsTmax: o.n('obsTmax'), obsHumidex: r1(oh.hx), obsWetBulb: r1(oh.tw), obsTs: o.s('obsTs'),
+    advActive: o.get('advActive') === true, advTitle: o.s('advTitle'),
+    lvRain: o.levels.rain, lvLightning: o.levels.lightning, lvHeat: o.levels.heat, lvRiver: o.levels.river, lvWind: o.levels.wind, overall: o.overall
+  };
+}
+// ---------- PDF report (vector text; emoji are dropped because the built-in PDF fonts have none) ----------
+function pdfClean(s) {
+  return String(s == null ? '' : s).replace(/−/g, '-').replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}\u{20E3}]/gu, '')
+    .replace(/[^\x0A\x20-\x7E\xA0-\xFF–—‘’“”•…]/g, '').replace(/^ +/gm, '').replace(/ {2,}/g, ' ');
+}
+const PDF_HEADS = ['TODAY’S FORECAST', 'HEAT / HUMIDITY', 'NAPO RIVER', 'HAZARD LEVELS', 'OPERATIONAL OUTLOOK', 'MODEL COMPARISON', 'WEATHER WARNING ADVISORY', 'OBSERVED, LAST 24 H', 'NOTES'];
+function buildPdf(J, o, cfg, doc, text, stamp) {
+  const pdf = new J({ unit: 'mm', format: 'a4' }), W = 210, H = 297, M = 16, CW = W - 2 * M;
+  const INK = [16, 32, 26], MUTED = [100, 112, 105], ACC = [15, 92, 92], LINE = [205, 212, 205];
+  const FILL = [[226, 230, 225], [220, 241, 222], [255, 231, 161], [255, 207, 163], [194, 48, 45]], FG = [[68, 83, 75], [11, 74, 23], [69, 50, 0], [85, 34, 0], [255, 255, 255]];
+  let y = M;
+  const mm = sz => sz * 0.3528, lh = sz => mm(sz) * 1.38;
+  const need = h => { if (y + h > H - 20) { pdf.addPage(); y = M } };
+  const set = (sz, style, c) => { pdf.setFont('helvetica', style || 'normal'); pdf.setFontSize(sz); pdf.setTextColor(c[0], c[1], c[2]) };
+  const para = (s, sz, style, c) => { set(sz, style, c || INK); pdf.splitTextToSize(pdfClean(s), CW).forEach(l => { need(lh(sz)); pdf.text(l, M, y + mm(sz) * 0.82); y += lh(sz) }) };
+  const r = record(o), v = (x, d, u) => isNum(x) ? fmt(x, d) + (u || '') : '–';
+
+  // header
+  const lines = text.split('\n'), issued = doc && doc.status === 'issued';
+  para(lines[0], 14, 'bold'); y += 0.5; para(lines[1], 11, 'normal'); para(lines[2], 10, 'normal', MUTED);
+  y += 1;
+  para(issued ? 'Issued ' + (doc.issuedAt || '') + (doc.issuedOn ? ' on ' + doc.issuedOn : '') + (doc.issuedText !== text ? ', edited since' : '') + ' (Ecuador time)' : 'DRAFT, not issued', 9, 'bold', issued ? ACC : [179, 38, 30]);
+  y += 2; pdf.setDrawColor(LINE[0], LINE[1], LINE[2]); pdf.setLineWidth(0.3); pdf.line(M, y, W - M, y); y += 4;
+
+  // hazard levels
+  const lv = [['Rain', r.lvRain], ['Lightning', r.lvLightning], ['Heat', r.lvHeat], ['River', r.lvRiver], ['Wind', r.lvWind]], bw = (CW - 4 * 2.5) / 5;
+  const ld = levelDetail(o), keys = ['rain', 'lightning', 'heat', 'river', 'wind'];
+  lv.forEach((p, i) => { const x = M + i * (bw + 2.5), n = p[1] || 0, dd = ld[keys[i]]; pdf.setFillColor(FILL[n][0], FILL[n][1], FILL[n][2]); pdf.roundedRect(x, y, bw, 23.5, 1.2, 1.2, 'F'); set(7, 'bold', FG[n]); pdf.text(p[0].toUpperCase(), x + 2.5, y + 4.4); set(11.5, 'bold', FG[n]); pdf.text(LV[n] + (keys[i] === 'wind' ? ' | ' + (dd.dir || '-') : ''), x + 2.5, y + 10); set(6.8, 'normal', FG[n]); if (dd.v) pdf.text(pdf.splitTextToSize(pdfClean(dd.v + (dd.b ? '; ' + dd.b : '')), bw - 4).slice(0, 3), x + 2.5, y + 14.3) });
+  y += 23.5 + 5;
+
+  // key numbers, two columns
+  const L = [['Max / min temperature', v(r.tmax, undefined, '°C') + ' / ' + v(r.tmin, undefined, '°C')], ['Humidity at peak heat', v(r.rh, 0, '%')], ['Humidex', isNum(r.humidex) ? fmt(r.humidex, 0) + ' (' + hxCat(r.humidex) + ')' : '–'], ['Wet-bulb temperature', v(r.wetBulb, 1, '°C')], ['Dew point', v(r.dewPoint, 1, '°C')], ['WBGT estimate, shade / full sun', v(r.wbgtShade, 0, '°C') + ' / ' + v(r.wbgtSun, 0, '°C')],
+    ['Rain night / AM / PM / evening', [r.rainNt, r.rainAM, r.rainPM, r.rainEve].map(x => isNum(x) ? fmt(x) : '–').join(' / ') + ' mm'], ['Rain in 24 h, model range', isNum(r.rainLo) ? (r.rainHi - r.rainLo >= 1 ? fmt(r.rainLo) + '–' + fmt(r.rainHi) : fmt(r.rainHi)) + ' mm' : '–'], ['Upstream rain, next 24 h', v(r.rainUp, undefined, ' mm')], ['Thunderstorms, day / night', (r.tsDay || '–') + ' / ' + (r.tsNight || '–')], ['Wind / from / gusts', v(r.wind, undefined, ' km/h') + ' / ' + (r.windDir || '–') + ' / ' + v(r.gust, undefined, ' km/h')]];
+  const R = [['Napo at Coca, H1135', isNum(r.riverLevel) ? fmt(r.riverLevel, 2) + ' m' + (r.riverTime ? ' at ' + r.riverTime : '') : 'unconfirmed'], ['Change over 24 h', isNum(r.riverChange) ? sgn(r.riverChange) + ' m' : '–'], ['Trend now', r.riverTrend || '–'], ['Outlook, next 24 h', r.riverOutlook || '–'], ['Tomorrow (five-day model)', isNum(r.expLo) ? (isNum(r.expMid) ? 'likely ' + fmt(r.expMid, 1) + ', ' : '') + fmt(r.expLo, 1) + '–' + fmt(r.expHi, 1) + ' m' : '–'], ['Coca at San Sebastián, H1134', v(r.h1134, 2, ' m')], ['Upstream rain, last 24 h', v(r.obsRainUp, undefined, ' mm')], ['Modelled flow over 24 h', isNum(r.riverFlowPct) ? sgn(r.riverFlowPct, 0) + '% (trend only)' : '–'],
+    ['Observed rain at Coca, last 24 h', v(r.obsRain, undefined, ' mm')], ['Observed max temperature', isNum(r.obsTmax) ? fmt(r.obsTmax) + '°C' + (isNum(r.obsHumidex) ? ', humidex ' + fmt(r.obsHumidex, 0) : '') : '–'], ['Observed thunderstorms', r.obsTs || '–'], ['Official advisory', r.advActive ? 'in force' : (o.get('advChecked') === true || o.get('advActive') === false) ? 'none identified' : 'not checked']];
+  if (cfg.advisory === false) R.pop();
+  const colW = (CW - 8) / 2, y0 = y;
+  const col = (x, title, rows) => { let yy = y0; set(7.5, 'bold', MUTED); pdf.text(title, x, yy + 2.6); yy += 5; rows.forEach(p => { set(8.6, 'normal', MUTED); pdf.text(pdfClean(p[0]), x, yy + 3); set(8.6, 'bold', INK); pdf.text(pdfClean(p[1]), x + colW, yy + 3, { align: 'right' }); pdf.setDrawColor(232, 236, 231); pdf.setLineWidth(0.15); pdf.line(x, yy + 4.6, x + colW, yy + 4.6); yy += 5.4 }); return yy };
+  y = Math.max(col(M, 'FORECAST AND HEAT STRESS', L), col(M + colW + 8, 'RIVER AND OBSERVED CONDITIONS', R)) + 4;
+
+  // text sections, as issued
+  let skip = false;
+  lines.slice(3).forEach(l => {
+    const head = PDF_HEADS.indexOf(pdfClean(l).trim()) >= 0 || l.indexOf('TOMORROW | ') === 0 || /^RIVER OUTLOOK \|/.test(l);
+    if (head) { skip = l === 'HAZARD LEVELS'; if (skip) return; y += 2.5; need(12); para(l, 8.6, 'bold', ACC); y += 0.8; return }
+    if (skip) return;
+    if (l.trim() === '') { y += 1.3; return }
+    para(l, 9.6, 'normal');
+  });
+  const au = doc && doc.auto;
+  if (au && au.sources && au.sources.length) { y += 4; para('Forecast values gathered ' + String(au.fetchedAt || '').replace('T', ' ') + ' (Ecuador time) from: ' + au.sources.map(s => s.name).join('; ') + '. River level, observed rain and any edited value were entered by the issuer. Heat indices are computed from forecast temperature and humidity; WBGT is an estimate.', 7.6, 'normal', MUTED) }
+
+  const n = pdf.internal.getNumberOfPages();
+  for (let i = 1; i <= n; i++) { pdf.setPage(i); set(7.5, 'normal', MUTED); pdf.text('Napo Basin Daily Weather & Hazard Assessment | ' + o.date + ' | generated ' + stamp + ' Ecuador time', M, H - 10); pdf.text('Page ' + i + ' of ' + n, W - M, H - 10, { align: 'right' }) }
+  return pdf;
+}
+/*PURE-END*/
+
+// ---------- page ----------
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const TS = [['', '—'], ['none', 'None'], ['isolated', 'Isolated'], ['scattered', 'Scattered'], ['likely', 'Likely']];
+const LVO = [['', 'Auto'], [1, 'Low'], [2, 'Moderate'], [3, 'High'], [4, 'Very high']];
+const GROUPS = [
+  { id: 'fx', title: 'Forecast today', hint: 'Coca and Yarina, today; rain for the next 24 h in 6-hour blocks', fields: [
+    ['tmax', 'Max temp', '°C', 'num'], ['tmin', 'Min temp', '°C', 'num'], ['rh', 'Humidity at peak heat', '%', 'num'],
+    ['rainNt', 'Rain, night 00–06', 'mm', 'num'], ['rainAM', 'Rain, AM 06–12', 'mm', 'num'], ['rainPM', 'Rain, PM 12–18', 'mm', 'num'], ['rainEve', 'Rain, evening 18–24', 'mm', 'num'], ['cloudAM', 'Cloud cover, AM 06–12', '%', 'num'], ['cloudPM', 'Cloud cover, PM 12–18', '%', 'num'], ['rainUp', 'Upstream rain, next 24 h', 'mm', 'num'],
+    ['tsDay', 'Thunderstorms, day', '', 'sel', TS], ['tsNight', 'Thunderstorms, night', '', 'sel', TS],
+    ['wind', 'Wind, sustained', 'km/h', 'num'], ['windDir', 'Wind from', '', 'text', null, 'E'], ['gust', 'Gusts', 'km/h', 'num']], after: '<div class="tiles" id="tiles"></div>' },
+  { id: 'river', title: 'Napo River', hint: '<a class="ext" href="https://inamhi.gob.ec/info/" target="_blank" rel="noopener">Open the INAMHI Visor ↗</a>', fields: [
+    ['riverLevel', 'Napo at Coca, H1135', 'm', 'num'], ['riverTime', 'Reading time', '', 'text', null, '06:00'], ['riverChange', 'Change over 24 h', 'm', 'num'],
+    ['riverTrend', 'Trend now', '', 'sel', [['', '—'], ['falling', 'Falling'], ['steady', 'Steady'], ['rising', 'Rising, 0.03 m/h or more'], ['rising fast', 'Rising fast, 0.1 m/h or more']]],
+    ['h1134', 'Coca at San Sebastián, H1134', 'm', 'num'], ['obsRainUp', 'Upstream rain, last 24 h', 'mm', 'num'],
+    ['riverOutlook', 'Outlook, next 24 h', '', 'sel', [['', 'Auto'], ['falling', 'Falling'], ['steady', 'Steady'], ['rise possible', 'Rise possible'], ['rise likely', 'Rise likely']]],
+    ['riverFlowPct', 'Modelled flow, 24 h', '%', 'num']], after: '<div class="stations"><h3 class="sth">INAMHI stations</h3><div id="stations"></div></div>' },
+  { id: 'o5', title: 'River outlook, 5 days', hint: 'Napo at Coca town, provisional', custom: '<div id="o5chart" class="o5chart"></div><div id="o5"></div><div id="o5skill"></div>' },
+  { id: 'models', title: 'Model comparison', hint: 'Max temp and 24 h rain per model', custom: '<div class="models" id="models"></div><div class="row"><button type="button" class="small" id="mAdd">Add model</button></div>' },
+  { id: 'tom', title: 'Tomorrow', hint: '', fields: [['tmaxTom', 'Max temp', '°C', 'num'], ['rainTom', 'Rain, 24 h', 'mm', 'num'], ['tsTom', 'Thunderstorms', '', 'sel', TS]] },
+  { id: 'adv', title: 'Official advisory', hint: '<a class="ext" href="https://www.inamhi.gob.ec/" target="_blank" rel="noopener">INAMHI ↗</a> · <a class="ext" href="https://www.gestionderiesgos.gob.ec/" target="_blank" rel="noopener">SNGR ↗</a>', custom:
+    '<label class="check"><input type="checkbox" id="f_advChecked" data-k="advChecked" data-t="bool">I checked today\'s INAMHI and SNGR advisories</label>' +
+    '<label class="check"><input type="checkbox" id="f_advActive" data-k="advActive" data-t="bool">An advisory covering Orellana is in force<em class="tag" data-tag="advActive"></em></label>',
+    fields: [['advTitle', 'Heading', '', 'text', null, 'WEATHER WARNING ADVISORY', 'wide'], ['advPeriod', 'Period', '', 'text', null, 'OCT 9–11', ''], ['advSource', 'Source', '', 'text', null, 'INAMHI advisory no. …', ''], ['advText', 'Advisory text', '', 'long', null, '', 'wide']] },
+  { id: 'obs', title: 'Observed, last 24 h', hint: 'What actually happened, for the record', fields: [
+    ['obsRain', 'Rain at Coca', 'mm', 'num'], ['obsTmax', 'Max temp', '°C', 'num'], ['obsTd', 'Dew point at max', '°C', 'num'],
+    ['obsTs', 'Thunderstorms', '', 'sel', [['', '—'], ['none', 'None'], ['nearby', 'Nearby'], ['overhead', 'Overhead']]], ['obsNote', 'Conditions and incidents', '', 'long', null, '', 'wide']] },
+  { id: 'lv', title: 'Hazard levels', hint: 'Suggested from the numbers; override when your judgement differs', fields: [
+    ['lvRain', 'Rain', '', 'sel', LVO], ['lvLightning', 'Lightning', '', 'sel', LVO], ['lvHeat', 'Heat', '', 'sel', LVO], ['lvRiver', 'River', '', 'sel', LVO], ['lvWind', 'Wind', '', 'sel', LVO]] },
+  { id: 'tx', title: 'Wording', hint: 'Edit any line; Reset returns it to the automatic wording', custom: [
+    ['txRain', 'Rain'], ['txLightning', 'Lightning'], ['txTemp', 'Temperature'], ['txRiver', 'Napo River'], ['txWind', 'Wind'], ['txOutlook', 'Operational outlook'], ['txModels', 'Model summary'], ['txTomorrow', 'Tomorrow'], ['txWarning', 'General warning']
+  ].map(p => '<div class="word"><div class="lab"><label for="f_' + p[0] + '">' + p[1] + '</label><em class="tag" data-tag="' + p[0] + '"></em><button type="button" class="small" data-reset="' + p[0] + '" hidden>Reset</button></div><textarea id="f_' + p[0] + '" data-k="' + p[0] + '" data-t="tx" rows="2"></textarea></div>').join('') +
+    '<label class="f"><span class="lab">Notes for the record</span><textarea id="f_notes" data-k="notes" data-t="long" rows="2"></textarea></label>' }
+];
+const REQ = [['tmax', 'Max temp'], ['rh', 'Humidity at peak heat'], ['rainAM', 'Rain, AM'], ['rainPM', 'Rain, PM'], ['rainEve', 'Rain, evening'], ['tsDay', 'Thunderstorms, day'], ['tsNight', 'Thunderstorms, night'], ['wind', 'Wind'],
+  ['riverLevel', 'Napo level at Coca'], ['riverTrend', 'River trend'], ['obsRain', 'Observed rain at Coca']];
+
+const keptDate = (() => { try { const d = sessionStorage.getItem('naaDate'); sessionStorage.removeItem('naaDate'); return /^\d{4}-\d{2}-\d{2}$/.test(d || '') ? d : null } catch (e) { return null } })();
+const st = { openDate: ecNow().date, openHM: ecNow().hm, date: keptDate || ecNow().date, docs: new Map(), cfg: Object.assign({}, DEF_CFG), loaded: false, db: null, local: {}, dirty: {}, dirtyDate: null, saving: false, created: new Set(), ro: false, timer: null };
+
+function buildForm() {
+  $('form').innerHTML = GROUPS.map(g => {
+    const f = (g.fields || []).map(x => {
+      const k = x[0], u = x[2] ? ' <i>' + x[2] + '</i>' : '', ph = x[5] ? ' placeholder="' + esc(x[5]) + '"' : '', wide = (x[6] === 'wide') ? ' wide' : '';
+      let c;
+      if (x[3] === 'sel') c = '<select id="f_' + k + '" data-k="' + k + '" data-t="sel">' + x[4].map(o => '<option value="' + o[0] + '">' + o[1] + '</option>').join('') + '</select>';
+      else if (x[3] === 'long') c = '<textarea id="f_' + k + '" data-k="' + k + '" data-t="long" rows="3"' + ph + '></textarea>';
+      else c = '<input id="f_' + k + '" data-k="' + k + '" data-t="' + x[3] + '"' + (x[3] === 'num' ? ' inputmode="decimal"' : '') + ph + ' autocomplete="off">';
+      return '<label class="f' + wide + '"><span class="lab"><span>' + x[1] + u + '</span><em class="tag" data-tag="' + k + '"></em></span>' + c + '</label>';
+    }).join('');
+    return '<div class="card" id="g_' + g.id + '"><div class="ch"><div class="ht"><h2>' + g.title + '</h2><span class="upd" id="u_' + g.id + '"></span></div><span class="tiny">' + g.hint + '</span></div>' + (g.id === 'adv' ? (g.custom || '') : '') + (f ? '<div class="fields">' + f + '</div>' : '') + (g.id !== 'adv' ? (g.custom || '') : '') + (g.after || '') + '</div>';
+  }).join('');
+}
+
+// issue time defaults to the moment the page was opened (Ecuador time) for today's brief, until it is typed over or the brief is issued
+function ecfg() { const d = st.docs.get(st.date); return (st.date === st.openDate && !(d && d.status === 'issued')) ? Object.assign({}, st.cfg, { issueTime: st.openHM }) : st.cfg }
+// ---------- forecast archive and scoring ----------
+// observed mean, min and max of the Napo at Coca over one 05:00-to-05:00 window, from the station archive
+function obsWindow(d, hist) {
+  const a = Date.parse(d + 'T05:00:00Z'), b = a + 864e5, v = ((hist && hist.lvl) || []).filter(p => p[0] >= a && p[0] < b).map(p => p[1]);
+  return v.length >= 18 ? { mean: v.reduce((x, y) => x + y, 0) / v.length, min: Math.min(...v), max: Math.max(...v), n: v.length } : null;
+}
+function skillStats() {
+  const hist = gaugeHist(), by = {};
+  (st.fcList || []).forEach(F => (F.rows || []).forEach(r => {
+    const L = Math.round((Date.parse(r.date) - Date.parse(F.date)) / 864e5); if (L < 1 || L > 5) return;
+    const w = obsWindow(r.date, hist); if (!w) return;
+    const m = isNum(r.midRaw) ? r.midRaw : r.mid; if (!isNum(m)) return;
+    (by[L] = by[L] || []).push({ err: w.mean - m, errShown: w.mean - r.mid, inside: w.min >= r.lo - 0.05 && w.max <= r.hi + 0.05 });
+  }));
+  return by;
+}
+function updateCorr() {
+  const by = skillStats(), c = {};
+  for (let L = 1; L <= 5; L++) { const a = by[L] || []; if (a.length >= 4) { const b = a.reduce((x, y) => x + y.err, 0) / a.length; c[L] = Math.max(-0.3, Math.min(0.3, Math.round(b * 100) / 100)) } }
+  O5_CORR = Object.keys(c).length ? c : null; st.skill = by;
+}
+function maybeSaveForecast() {
+  if (!st.db || !st.fcLoaded || st.fcSaving || st.ro) return;
+  const today = ecNow().date, doc = st.docs.get(today);
+  if (!doc || !doc.gauge || !doc.auto || (st.fcList || []).some(f => f.date === today)) return;
+  if (String(doc.gauge.fetchedAt || '').slice(0, 10) !== today || String(doc.auto.fetchedAt || '').slice(0, 10) !== today) return;
+  const o = compute(today, doc, today === st.date ? st.local : null, st.docs.get(addDays(today, -1))); if (!o.o5) return;
+  const now = ecNow(); st.fcSaving = true;
+  st.db.doc('forecasts/' + today).set({ date: today, madeAt: now.date + 'T' + now.hm, level: o.n('riverLevel'), levelAt: o.s('riverTime'), stations: doc.gauge.fetchedAt, weather: doc.auto.fetchedAt, corr: O5_CORR || null, rows: o.o5.map(r => ({ date: r.date, lo: r.lo, hi: r.hi, mid: r.mid, midRaw: r.midRaw, rain: r.rain })) })
+    .catch(() => {}).finally(() => { st.fcSaving = false });
+}
+function skillHtml() {
+  const by = st.skill || {}, rows = [1, 2, 3, 4, 5].filter(L => (by[L] || []).length);
+  if (!rows.length) return '<p class="tiny">Forecast check: each morning\'s five-day forecast is now kept. The first one is scored once its first day has passed, against the mean level at Coca from 05:00 to 05:00.</p>';
+  const c = O5_CORR || {};
+  return '<div class="tablewrap"><table><thead><tr><th>Forecast check</th><th class="r">Scored</th><th class="r">Mean error</th><th class="r">Bias</th><th class="r">Inside range</th><th class="r">Correction now</th></tr></thead><tbody>' +
+    rows.map(L => { const a = by[L], mae = a.reduce((x, y) => x + Math.abs(y.errShown), 0) / a.length, bias = a.reduce((x, y) => x + y.errShown, 0) / a.length, ins = a.filter(y => y.inside).length;
+      return '<tr><td>' + (24 * L) + ' h ahead</td><td class="r">' + a.length + '</td><td class="r">' + fmt(mae, 2) + ' m</td><td class="r">' + sgn(bias) + ' m</td><td class="r">' + ins + ' of ' + a.length + '</td><td class="r">' + (isNum(c[L]) ? sgn(c[L]) + ' m' : a.length < 4 ? 'from 4 scored' : '±0.00 m') + '</td></tr>' }).join('') +
+    '</tbody></table></div><p class="tiny">Error = observed mean level (05:00 to 05:00) minus the likely level forecast. Bias above zero means the river ran higher than forecast. Once 4 or more forecasts are scored for a lead time, that average bias (capped at ±0.3 m) is added to new forecasts for that lead time.</p>';
+}
+// observed rain at Coca town (H1135) from 00:00 to 06:00 on a date, when the station archive covers at least 5 of those hours
+function obsNight(d) {
+  const rn = gaugeHist().rainH; if (!rn) return null; const a = Date.parse(d + 'T00:00:00Z'); let sum = 0, n = 0;
+  for (let t = a; t < a + 6 * 36e5; t += 36e5) if (rn.has(t)) { sum += rn.get(t); n++ }
+  return n >= 5 ? Math.round(sum * 10) / 10 : null;
+}
+// when today's station reading is missing, carry the last stored Napo at Coca reading (within 36 h) so the river outlook and chart still work
+function lastObsFor(d) {
+  const lv = gaugeHist().lvl; if (!lv || !lv.length) return null;
+  const end = Date.parse(d + 'T23:59:00Z'), cand = lv.filter(p => p[0] <= end && p[0] >= end - 60 * 36e5); if (!cand.length) return null;
+  const p = cand[cand.length - 1], iso = new Date(p[0]).toISOString();
+  return { v: p[1], ms: p[0], date: iso.slice(0, 10), hm: iso.slice(11, 16), label: dateFmt(iso.slice(0, 10), { month: 'short', day: 'numeric' }) + ', ' + iso.slice(11, 16) };
+}
+function cur() {
+  const d = st.date; let doc = st.docs.get(d); const on = obsNight(d);
+  if (on !== null) doc = Object.assign({}, doc || {}, { obsNt: on });
+  let lo = null;
+  if (!(doc && doc.gauge && doc.gauge.vals && isNum(doc.gauge.vals.riverLevel)) && !(st.local && isNum(st.local.riverLevel)) && !(doc && doc.man && isNum(doc.man.riverLevel))) {
+    lo = lastObsFor(d);
+    if (lo && (lo.date === d || Date.parse(d + 'T05:00:00Z') - lo.ms <= 36 * 36e5)) doc = Object.assign({}, doc || {}, { fb: { riverLevel: lo.v, riverTime: lo.date === d ? lo.hm : lo.label + ' (last reading)' } });
+    else lo = null;
+  }
+  const o = compute(d, doc, st.local, st.docs.get(addDays(d, -1))); o.lastObs = lo; return o;
+}
+
+function parse(el) {
+  const t = el.dataset.t;
+  if (t === 'bool') return el.checked;
+  const raw = el.value.trim();
+  if (t === 'num') { if (raw === '') return ''; const x = parseFloat(raw.replace(',', '.').replace('−', '-')); return isFinite(x) && /^[-+]?\d*[.,]?\d*$/.test(raw.replace('−', '-')) ? x : NaN }
+  if (t === 'sel' && /^lv/.test(el.dataset.k)) return raw === '' ? '' : Number(raw);
+  return el.value;
+}
+function onEdit(el) {
+  const k = el.dataset.k, v = parse(el);
+  if (typeof v === 'number' && isNaN(v)) { el.setAttribute('aria-invalid', 'true'); return }
+  el.removeAttribute('aria-invalid');
+  queue(k, (el.dataset.t === 'tx' && el.value.trim() === '') ? null : v);
+  refresh();
+}
+function queue(k, v) {
+  st.local[k] = v; st.dirty[k] = v; st.dirtyDate = st.date;
+  clearTimeout(st.timer); st.timer = setTimeout(flush, 700);
+  saveState(st.db ? 'Saving…' : 'Not saved in this view');
+}
+async function flush() {
+  clearTimeout(st.timer);
+  if (st.saving || !st.db || st.ro) return;
+  const keys = Object.keys(st.dirty); if (!keys.length) return;
+  const batch = st.dirty, date = st.dirtyDate; st.dirty = {}; st.saving = true;
+  try {
+    const ref = st.db.doc('briefs/' + date), now = Date.now();
+    if (st.docs.has(date) || st.created.has(date)) await ref.update({ man: batch, updatedTs: now });
+    else { st.created.add(date); await ref.set({ date, status: 'draft', man: batch, createdTs: now, updatedTs: now }) }
+    if (date === st.date) keys.forEach(k => { if (!(k in st.dirty) && JSON.stringify(st.local[k]) === JSON.stringify(batch[k])) delete st.local[k] });
+    saveState('Saved ' + ecNow().hm);
+  } catch (e) {
+    keys.forEach(k => { if (!(k in st.dirty)) st.dirty[k] = batch[k] });
+    if (e && e.code === 'invalid_argument') { st.ro = true; banner('You can view this record but not change it. Your edits stay on this screen only.') }
+    saveState('Not saved: ' + ((e && e.message) || 'store unavailable') + '. Your entries stay on screen; edit any field to retry.', true);
+  } finally {
+    st.saving = false;
+    if (Object.keys(st.dirty).length && !st.ro && st.dirtyDate === date) { clearTimeout(st.timer); st.timer = setTimeout(flush, 4000) }
+  }
+}
+function saveState(t, err) { const e = $('stSave'); e.textContent = t; e.style.color = err ? 'var(--danger)' : '' }
+function banner(t) { const b = $('banner'); b.textContent = t; b.hidden = !t }
+
+function setVal(el, v) {
+  if (document.activeElement === el) return;
+  if (el.dataset.t === 'bool') { el.checked = v === true; return }
+  const s = has(v) ? (el.dataset.k === 'riverChange' && isNum(v) ? sgn(v) : String(v)) : '';
+  if (el.value !== s) el.value = s;
+}
+// past levels and rain at H1135, merged from the stored station readings (each holds 48 hourly values)
+function gaugeHist() {
+  if (st.histCache && st.histCache.n === st.gaugeDocs) return st.histCache.h;
+  const lv = new Map(), rn = new Map(), l34 = new Map();
+  (st.gaugeList || []).slice().sort((a, b) => String(a.fetchedAt || a.date).localeCompare(String(b.fetchedAt || b.date))).forEach(d => {
+    if (!d || !d.t0Ecuador || !d.series) return;
+    const t0 = Date.parse(String(d.t0Ecuador).replace(' ', 'T').slice(0, 16) + ':00Z'); if (!isFinite(t0)) return;
+    const put = (str, map) => String(str || '').split(',').forEach((v, k) => { if (v !== '' && isFinite(+v)) map.set(t0 + k * 36e5, +v) });
+    put(d.series.H1135, lv); put(d.series.rain_H1135, rn); put(d.series.H1134, l34);
+  });
+  const rain = {}; rn.forEach((v, t) => { const day = new Date(t - 5 * 36e5).toISOString().slice(0, 10); rain[day] = Math.round(((rain[day] || 0) + v) * 10) / 10 });
+  const h = { lvl: [...lv.entries()].sort((a, b) => a[0] - b[0]), lvl34: [...l34.entries()].sort((a, b) => a[0] - b[0]), rain, rainH: rn };
+  st.histCache = { n: st.gaugeDocs, h }; return h;
+}
+function stamp(x) { x = x ? String(x).slice(0, 16) : ''; return /^\d{4}-\d\d-\d\dT\d\d:\d\d/.test(x) ? dateFmt(x.slice(0, 10), { month: 'short', day: 'numeric' }) + ', ' + x.slice(11, 16) : '' }
+function renderStamps(doc) {
+  const a = stamp(doc && doc.auto && doc.auto.fetchedAt), g = stamp(doc && doc.gauge && doc.gauge.fetchedAt);
+  const put = (id, t) => { const e = $('u_' + id); if (!e) return; e.textContent = t || 'not gathered'; e.dataset.kind = t ? '' : 'none' };
+  ['fx', 'models', 'tom', 'adv', 'obs'].forEach(id => put(id, a && 'Updated ' + a));
+  put('river', g && 'Stations ' + g);
+  const ga = doc && doc.gauge && doc.gauge.fetchedAt, aa = doc && doc.auto && doc.auto.fetchedAt, latest = [ga, aa].filter(Boolean).sort().pop();
+  const lr = $('lastRef'); if (lr) { lr.textContent = latest ? 'Last refresh ' + stamp(latest) : 'Not refreshed yet'; lr.title = 'Stations ' + (g || 'not read') + ' · forecasts ' + (a || 'not gathered') }
+  const rf = document.querySelector('#g_river > .fields'); if (rf) rf.hidden = !!(doc && doc.gauge && Array.isArray(doc.gauge.levels) && doc.gauge.levels.length);
+  put('o5', (g || a) && [g && 'levels ' + g, a && 'rain ' + a].filter(Boolean).join(' · ').replace(/^./, c => c.toUpperCase()));
+}
+function refresh() {
+  const o = cur(), doc = st.docs.get(st.date);
+  renderStamps(doc);
+  // inputs
+  document.querySelectorAll('[data-k]').forEach(el => {
+    const k = el.dataset.k, lock = (LOCKED.has(k) && has(o.auto[k])) || (k === 'rainNt' && o.rainNtObs);
+    if (el.tagName === 'SELECT' || el.type === 'checkbox') el.disabled = lock; else el.readOnly = lock;
+    el.classList.toggle('locked', lock);
+    if (el.dataset.t === 'tx') setVal(el, o.tx[k]); else setVal(el, k === 'rainNt' ? o.rainNt : o.get(k));
+  });
+  { const lab = { rainNt: 'Rain, night 00–06', rainAM: 'Rain, AM 06–12', rainPM: 'Rain, PM 12–18', rainEve: 'Rain, evening 18–24' };
+    const fx = document.querySelectorAll('#g_fx .fields > label'); fx.forEach((l, i) => { l.style.order = i * 10 });
+    const slots = o.blocks.map(b => { const el = $('f_' + b.k); return el ? el.closest('label') : null }), base = Math.min(...slots.filter(Boolean).map(l => +l.style.order));
+    o.blocks.forEach((b, i) => { const l = slots[i]; if (!l) return; l.style.order = base + i; const sp = l.querySelector('.lab > span'); if (sp && sp.firstChild) sp.firstChild.textContent = lab[b.k] + (b.date !== o.date ? ', ' + dateFmt(b.date, { weekday: 'short', month: 'short', day: 'numeric' }) : '') + ' ' }) }
+  document.querySelectorAll('[data-tag]').forEach(el => { const k = el.dataset.tag; let s = (k in o.txSrc) ? o.txSrc[k] : o.src(k); if (s === 'edited' && !(k in o.txSrc) && !has(o.auto[k])) s = ''; if (k === 'rainNt' && o.rainNtObs) s = 'observed'; el.textContent = s; el.dataset.s = s });
+  document.querySelectorAll('[data-reset]').forEach(b => { b.hidden = o.txSrc[b.dataset.reset] !== 'edited' });
+  const oo = $('f_riverOutlook').options[0]; oo.textContent = 'Auto' + (o.sugOutlook ? ': ' + o.sugOutlook : '');
+  [['lvRain', 'rain'], ['lvLightning', 'lightning'], ['lvHeat', 'heat'], ['lvRiver', 'river'], ['lvWind', 'wind']].forEach(p => { $('f_' + p[0]).options[0].textContent = 'Auto: ' + LV[o.sug[p[1]]] });
+  const rc = $('f_riverChange'); rc.placeholder = (o.changeDerived && o.change !== null) ? sgn(o.change) + ' from yesterday' : '';
+  $('f_issueTime').placeholder = ecfg().issueTime || '06:30';
+
+  // heat tiles
+  const h = o.heat, T = (l, v, u, n) => '<div class="tile"><span>' + l + '</span><b>' + v + (u ? ' <small>' + u + '</small>' : '') + '</b><em>' + n + '</em></div>';
+  $('tiles').innerHTML = h
+    ? T('Humidex', fmt(h.hx, 0), '', hxCat(h.hx)) + T('Wet-bulb', fmt(h.tw, 1), '°C', 'at peak heat') + T('Dew point', fmt(h.td, 1), '°C', 'RH ' + fmt(h.rh, 0) + '%') + T('WBGT', fmt(h.wbSun, 0) + ' / ' + fmt(h.wbShade, 0), '°C', 'full sun / shade' + (o.wb ? ', peak ' + o.wb.at : '') + '')
+    : T('Humidex', '–', '', 'needs max temp') + T('Wet-bulb', '–', '°C', 'and humidity') + T('Dew point', '–', '°C', '') + T('WBGT est.', '–', '°C', 'shade / full sun');
+
+  // stations and five-day outlook
+  const gg = o.gauge, cell = x => isNum(x) ? fmt(x) : '–';
+  $('stations').innerHTML = (st.gaugeMsg ? '<p class="msg"' + (st.gaugeErr ? ' data-kind="err"' : '') + ' role="status">' + esc(st.gaugeMsg) + '</p>' : '') + (st.fcMsg ? '<p class="msg"' + (st.fcErr ? ' data-kind="err"' : '') + ' role="status">' + esc(st.fcMsg) + '</p>' : '') + (gg && Array.isArray(gg.levels) && gg.levels.length
+    ? '<div class="tablewrap"><table><thead><tr><th>Level station</th><th class="r">Now</th><th class="r">At</th><th class="r">3 h</th><th class="r">24 h</th><th>Trend</th></tr></thead><tbody>' +
+      gg.levels.map(s => '<tr><td>' + esc(s.name) + ' <span class="tiny">' + esc(s.code) + '</span></td><td class="r">' + fmt(s.now, 2) + ' m</td><td class="r">' + esc(s.at) + '</td><td class="r">' + (isNum(s.ch3) ? sgn(s.ch3) : '–') + '</td><td class="r">' + (isNum(s.ch24) ? sgn(s.ch24) : '–') + '</td><td>' + (isNum(s.ch3) ? trendWord(s.ch3 / 3) : '–') + '</td></tr>').join('') + '</tbody></table></div>' +
+      (Array.isArray(gg.rain) && gg.rain.length ? '<div class="tablewrap"><table><thead><tr><th>Rain station</th><th class="r">6 h</th><th class="r">12 h</th><th class="r">24 h</th><th class="r">72 h</th><th class="r">To</th></tr></thead><tbody>' +
+      gg.rain.filter(r => RIVER_RAIN.indexOf(r.code) >= 0).map(r => '<tr><td>' + esc(r.name) + ' <span class="tiny">' + esc(r.code) + '</span></td><td class="r">' + cell(r.r6) + '</td><td class="r">' + cell(r.r12) + '</td><td class="r">' + cell(r.r24) + '</td><td class="r">' + cell(r.r72) + '</td><td class="r">' + esc(r.upTo || '') + '</td></tr>').join('') + '</tbody></table></div>' : '') +
+      '<p class="tiny">Read ' + esc(String(gg.fetchedAt || '').replace('T', ' ')) + (gg.errors && gg.errors.length ? '. Not read: ' + esc(gg.errors.join('; ')) : '') + '. Rain in mm; levels in m.</p>' + stationMap(gg)
+    : '<p class="sub">No station readings for this date yet: the INAMHI Visor did not answer. Press Refresh to try again.' + (o.lastObs ? ' The river outlook uses the last stored reading, ' + fmt(o.lastObs.v, 2) + ' m on ' + o.lastObs.label + '.' : '') + '</p>' + stationMap(null));
+  checkGauge(gg); checkForecast(doc);
+  const sd = st.cfg.shootDate || '';
+  $('o5').innerHTML = o.o5
+    ? '<div class="tablewrap"><table><thead><tr><th>Day, 05:00 to 05:00</th><th class="r">Likely</th><th class="r">Range</th><th class="r">Rain forecast</th><th>Note</th></tr></thead><tbody>' +
+      o.o5.slice(1).map(r => '<tr><td>' + dateFmt(r.date, { weekday: 'short', month: 'short', day: 'numeric' }) + '</td><td class="r"><b>' + fmt(r.mid, 1) + ' m</b></td><td class="r">' + fmt(r.lo, 1) + '–' + fmt(r.hi, 1) + ' m</td><td class="r">' + (r.rain !== null ? r.rain + ' mm' : '–') + '</td><td>' + [r.hi > RIVER_HIGH ? 'high water possible' : '', r.lo < RIVER_LOW ? 'low water possible' : ''].filter(Boolean).join(', ') + '</td></tr>').join('') + '</tbody></table></div>' +
+      ''
+    : '<p class="sub">Enter or gather the level at Coca to see the five-day range.</p>';
+  if (document.activeElement !== $('cShoot')) $('cShoot').value = sd;
+  $('o5chart').innerHTML = o.o5 ? o5Chart(o, sd, Object.assign({ fc: st.fcList || [] }, gaugeHist())) + '<p class="tiny">Past forecasts of the likely level, for the days already observed: ● 24 h ahead · ■ 48 h · ▲ 72 h · ▬ 96 h.</p>' : '';
+  $('o5skill').innerHTML = skillHtml();
+  maybeSaveForecast();
+  {
+    let li = '';
+    if (sd) {
+      const today = ecNow().date, n = Math.round((Date.parse(sd) - Date.parse(today)) / 864e5);
+      const r = o.o5 ? o.o5.slice(1).find(x => x.date === sd) : null;
+      li = n > 1 ? 'in ' + n + ' days' : n === 1 ? 'tomorrow' : n === 0 ? 'today' : n + ' days ago';
+      if (r) li += ' · Napo at Coca likely ' + fmt(r.mid, 1) + ' m (' + fmt(r.lo, 1) + '–' + fmt(r.hi, 1) + ')' + (r.hi > RIVER_HIGH ? ', high water possible' : r.lo < RIVER_LOW ? ', low water possible' : '');
+      else if (n > 5) li += ' · river range shown from ' + dateFmt(addDays(sd, -5), { month: 'short', day: 'numeric' });
+    }
+    $('launchInfo').textContent = li;
+  }
+
+  // models
+  if (!(document.activeElement && document.activeElement.dataset && document.activeElement.dataset.m !== undefined)) {
+    $('models').innerHTML = '<div class="mrow h"><span>Model</span><span>Max °C</span><span>Rain mm</span><span class="note">Note</span><span></span></div>' + o.models.map((r, i) =>
+      '<div class="mrow"><input data-m="' + i + '" data-c="label" value="' + esc(r.label) + '" aria-label="Model name">' +
+      '<input data-m="' + i + '" data-c="tmax" inputmode="decimal" value="' + esc(r.tmax === null ? '' : r.tmax) + '" aria-label="Max temp">' +
+      '<input data-m="' + i + '" data-c="rain" inputmode="decimal" value="' + esc(r.rain === null ? '' : r.rain) + '" aria-label="Rain">' +
+      '<input class="note" data-m="' + i + '" data-c="note" value="' + esc(r.note) + '" aria-label="Note" placeholder="e.g. limited afternoon rainfall">' +
+      '<button type="button" data-mdel="' + i + '" aria-label="Remove ' + esc(r.label) + '">×</button></div>').join('');
+  }
+
+  // levels
+  const ld = levelDetail(o);
+  $('levels').innerHTML = (a => (a.splice(3, 0, wbTile(o)), a))([['Rain', 'rain'], ['Lightning', 'lightning'], ['Heat', 'heat'], ['River', 'river'], ['Wind', 'wind']].map(p => '<div class="lv" data-level="' + o.levels[p[1]] + '"><span>' + p[0] + '</span><b>' + LV[o.levels[p[1]]] + (p[1] === 'wind' ? ' <span class="wdir" title="' + (ld.wind.dir ? 'Wind from ' + ld.wind.dir : 'Wind direction not gathered') + '">· ' + (ld.wind.dir || '–') + '</span>' : '') + '</b>' + (ld[p[1]].v ? '<i>' + esc(ld[p[1]].v) + '</i>' : '') + (ld[p[1]].b ? '<i class="band">' + esc(ld[p[1]].b) + '</i>' : '') + '</div>')).join('') + (() => { const c = cloudInfo(o); return '<div class="lv lvinfo"><span>Cloud</span><b>' + (c ? cap(c.word) : 'Not gathered') + '</b>' + (c ? '<i>' + [c.am !== null ? 'AM ' + fmt(c.am, 0) + '%' : '', c.pm !== null ? 'PM ' + fmt(c.pm, 0) + '%' : ''].filter(Boolean).join(', ') + '</i><i class="band">sky covered, 06–18</i>' : '') + '</div>' })();
+
+  // gaps + status
+  const gaps = [];
+  REQ.forEach(p => { if (!has(o.get(p[0]))) gaps.push(p) });
+  if (o.models.filter(r => r.tmax !== null || r.rain !== null).length < 2) gaps.push(['models', 'Model comparison']);
+  if (o.get('advChecked') !== true) gaps.push(['advChecked', 'Advisory check']);
+  $('gaps').innerHTML = gaps.map(p => '<button type="button" data-go="' + p[0] + '">' + p[1] + '</button>').join('');
+  const text = briefText(o, ecfg()), issued = doc && doc.status === 'issued';
+  const stale = issued && doc.issuedText !== text;
+  $('stLabel').textContent = !st.loaded ? 'Loading the brief'
+    : issued ? ('Issued ' + (doc.issuedAt || '') + (stale ? ', edited since' : ''))
+    : gaps.length ? gaps.length + (gaps.length === 1 ? ' gap to fill' : ' gaps to fill') : 'Ready to issue';
+  const au = doc && doc.auto;
+  $('stAuto').textContent = au && au.fetchedAt
+    ? 'Forecast values gathered ' + String(au.fetchedAt).replace('T', ' ').slice(0, 16) + ' from ' + ((au.sources || []).length || 'the usual') + ' sources.' + ((au.gaps || []).length ? ' Not gathered: ' + au.gaps.join('; ') + '.' : '')
+    : st.loaded ? 'No forecast values were gathered for this date. Enter them below; everything you type is saved to the record.' : 'Forecast values gathered before 06:00 appear here already filled in.';
+  $('brief').textContent = text;
+  $('bIssue').textContent = issued ? 'Re-issue with these values' : 'Mark as issued';
+  $('bIssue').disabled = !st.db || st.ro;
+  $('dPick').value = st.date;
+  renderLog();
+}
+
+function wbTile(o) {
+  const h = o.heat, rep = o.n('wbgt');
+  if (!h || !isNum(h.wbSun)) return '<div class="lv lvinfo"><span>WBGT</span><b>Not gathered</b>' + (rep !== null ? '<i>reported ' + fmt(rep, 1) + ' °C</i>' : '<i>needs temperature and humidity</i>') + '</div>';
+  const w = h.wbSun, lvl = w < 25 ? 1 : w < 28 ? 2 : w < 31 ? 3 : 4;
+  return '<div class="lv" data-level="' + lvl + '"><span>WBGT</span><b>' + cap(wbgtLevel(w).toLowerCase()) + ' · ' + fmt(w, 0) + '°</b><i>sun ' + fmt(w, 0) + '°, shade ' + fmt(h.wbShade, 0) + '°' + (o.wb ? ' · peak ' + o.wb.at : '') + '</i>' + (rep !== null ? '<i>reported ' + fmt(rep, 1) + ' °C</i>' : '') + '<i class="band">' + (lvl === 1 ? 'under 25' : lvl === 2 ? '25–27.9' : lvl === 3 ? '28–30.9' : '31 and over') + ' in full sun</i></div>';
+}
+function lvChips(r) { return [['R', r.lvRain], ['L', r.lvLightning], ['H', r.lvHeat], ['Rv', r.lvRiver], ['W', r.lvWind]].map(p => '<span class="chip" data-level="' + (p[1] || 0) + '" title="' + LV[p[1] || 0] + '">' + p[0] + '</span>').join('') }
+function rowsFor() {
+  return Array.from(st.docs.keys()).sort().reverse().map(d => {
+    const doc = st.docs.get(d), issued = doc.status === 'issued' && doc.final;
+    const r = (issued && d !== st.date) ? doc.final : record(compute(d, doc, d === st.date ? st.local : null, st.docs.get(addDays(d, -1))));
+    return { d, doc, r };
+  });
+}
+// how yesterday's expected range compared with the level entered the next day
+function verdict(x) {
+  const nd = st.docs.get(addDays(x.d, 1)); if (!nd) return '–';
+  const a = compute(addDays(x.d, 1), nd, addDays(x.d, 1) === st.date ? st.local : null, null).n('riverLevel');
+  if (a === null || !isNum(x.r.expLo)) return a === null ? '–' : fmt(a, 2);
+  return fmt(a, 2) + (a > x.r.expHi + 0.05 ? ' above by ' + fmt(a - x.r.expHi, 2) : a < x.r.expLo - 0.05 ? ' below by ' + fmt(x.r.expLo - a, 2) : ' within');
+}
+function renderLog() {
+  const rows = rowsFor();
+  if (!rows.length) return;
+  const c = (x, d, u) => isNum(x) ? fmt(x, d) + (u || '') : '–';
+  $('log').innerHTML = '<table><thead><tr><th>Date</th><th>Status</th><th class="r">Tmax</th><th class="r">RH</th><th class="r">Wet-bulb</th><th class="r">Humidex</th><th class="r">Rain fcst 24 h</th><th class="r">Rain obs</th><th class="r">Napo m</th><th class="r">24 h</th><th>Outlook</th><th class="r">Expected next day</th><th class="r">Next day actual</th><th>Levels</th><th>Advisory</th></tr></thead><tbody>' +
+    rows.map(x => { const r = x.r; return '<tr data-date="' + x.d + '"' + (x.d === st.date ? ' aria-current="true"' : '') + '><td>' + dateFmt(x.d, { weekday: 'short', month: 'short', day: 'numeric' }) + '</td><td>' + (x.doc.status === 'issued' ? 'Issued ' + esc(x.doc.issuedAt || '') : 'Draft') + '</td>' +
+      '<td class="r">' + c(r.tmax, undefined, '°') + '</td><td class="r">' + c(r.rh, 0, '%') + '</td><td class="r">' + c(r.wetBulb, 1, '°') + '</td><td class="r">' + c(r.humidex, 0) + '</td>' +
+      '<td class="r">' + (isNum(r.rainLo) ? (r.rainHi - r.rainLo >= 1 ? fmt(r.rainLo) + '–' + fmt(r.rainHi) : fmt(r.rainHi)) : '–') + '</td><td class="r">' + c(r.obsRain) + '</td>' +
+      '<td class="r">' + c(r.riverLevel, 2) + '</td><td class="r">' + (isNum(r.riverChange) ? sgn(r.riverChange) : '–') + '</td><td>' + esc(r.riverOutlook || '–') + '</td><td class="r">' + (isNum(r.expLo) ? fmt(r.expLo, 1) + '–' + fmt(r.expHi, 1) : '–') + '</td><td class="r">' + verdict(x) + '</td><td>' + lvChips(r) + '</td><td>' + (r.advActive ? 'In force' : '–') + '</td></tr>' }).join('') + '</tbody></table>';
+}
+
+async function setDate(d) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || d === st.date) return;
+  await flush();
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  if (d === ecNow().date && d !== st.openDate) { st.openDate = d; st.openHM = ecNow().hm }
+  st.date = d; st.local = {}; $('bMsg').textContent = ''; refresh();
+}
+function modelsFromDom() {
+  const rows = [];
+  document.querySelectorAll('#models .mrow:not(.h)').forEach(row => {
+    const g = c => row.querySelector('[data-c="' + c + '"]').value.trim(), num = c => { const x = parseFloat(g(c).replace(',', '.')); return isFinite(x) ? x : null };
+    rows.push({ label: g('label'), tmax: num('tmax'), rain: num('rain'), note: g('note') });
+  });
+  return rows;
+}
+
+async function copyBrief() {
+  const text = $('brief').textContent, m = $('bMsg');
+  try { await navigator.clipboard.writeText(text); m.textContent = 'Copied. Paste it into your message.'; m.dataset.kind = '' }
+  catch (e) { const r = document.createRange(); r.selectNodeContents($('brief')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); m.textContent = 'Text selected. Copy it with your keyboard or the long-press menu.'; m.dataset.kind = '' }
+}
+async function issue() {
+  const m = $('bMsg');
+  if (!st.db) return;
+  if (!has(cur().get('issueTime'))) queue('issueTime', ecfg().issueTime || '06:30');
+  await flush();
+  const o = cur(), date = st.date, now = ecNow();
+  const body = { status: 'issued', issuedAt: now.hm, issuedOn: now.date, issuedTs: Date.now(), issuedText: briefText(o, st.cfg), final: record(o) };
+  try {
+    const ref = st.db.doc('briefs/' + date);
+    if (st.docs.has(date) || st.created.has(date)) await ref.update(body);
+    else { st.created.add(date); await ref.set(Object.assign({ date, createdTs: Date.now() }, body)) }
+    m.textContent = 'Recorded as issued at ' + now.hm + '.'; m.dataset.kind = '';
+  } catch (e) { m.textContent = 'Not recorded: ' + ((e && e.message) || 'store unavailable') + '. Try again.'; m.dataset.kind = 'err' }
+}
+function csv() {
+  const rows = rowsFor(); if (!rows.length) return '';
+  const cols = Object.keys(rows[0].r), q = v => { const s = v === null || v === undefined ? '' : typeof v === 'object' ? JSON.stringify(v) : String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s };
+  return ['date,status,issuedAt,' + cols.join(',')].concat(rows.map(x => [x.d, x.doc.status || 'draft', x.doc.issuedAt || ''].concat(cols.map(c => x.r[c])).map(q).join(','))).join('\n');
+}
+
+function wire() {
+  const form = $('form');
+  document.addEventListener('input', e => { const el = e.target; if (el.dataset && el.dataset.k && el.tagName !== 'SELECT' && el.type !== 'checkbox') onEdit(el); else if (el.dataset && el.dataset.m !== undefined) { queue('models', modelsFromDom()); refreshLight() } });
+  document.addEventListener('change', e => { const el = e.target; if (el.dataset && el.dataset.k && (el.tagName === 'SELECT' || el.type === 'checkbox')) onEdit(el) });
+  document.addEventListener('focusout', () => setTimeout(refresh, 0));
+  form.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.reset) { queue(b.dataset.reset, null); refresh() }
+    else if (b.dataset.mdel !== undefined) { const rows = modelsFromDom(); rows.splice(Number(b.dataset.mdel), 1); queue('models', rows.length ? rows : [{ label: '' }]); refresh() }
+    else if (b.id === 'mAdd') { const rows = modelsFromDom(); rows.push({ label: '', tmax: null, rain: null, note: '' }); queue('models', rows); b.blur(); refresh(); const ins = document.querySelectorAll('#models [data-c="label"]'); ins[ins.length - 1].focus() }
+  });
+  $('gaps').addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (!b) return; const el = b.dataset.go === 'models' ? document.querySelector('#models [data-c="tmax"]') : $('f_' + b.dataset.go); if (el) { el.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); el.focus({ preventScroll: true }) } });
+  $('log').addEventListener('click', e => { const tr = e.target.closest('tr[data-date]'); if (tr) { setDate(tr.dataset.date); scrollTo({ top: 0 }) } });
+  { let rw = innerWidth, rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (innerWidth !== rw) { rw = innerWidth; refresh() } }, 200) }) }
+  $('dPrev').onclick = () => setDate(addDays(st.date, -1));
+  $('dNext').onclick = () => setDate(addDays(st.date, 1));
+  $('dToday').onclick = () => setDate(ecNow().date);
+  $('dRefresh').onclick = refreshStations;
+  $('dPick').onchange = e => setDate(e.target.value);
+  $('bCopy').onclick = copyBrief;
+  $('bIssue').onclick = issue;
+  $('form').addEventListener('change', async e => {
+    if (e.target.id !== 'cShoot') return;
+    st.cfg = Object.assign({}, st.cfg, { shootDate: e.target.value || '' }); refresh();
+    if (st.db) { try { await st.db.doc('config/main').set({ title: st.cfg.title, locations: st.cfg.locations, issueTime: st.cfg.issueTime, shootDate: st.cfg.shootDate }) } catch (err) { $('bMsg').textContent = 'Launch day not saved: ' + ((err && err.message) || 'store unavailable') + '.' } }
+  });
+  $('cSave').onclick = async () => {
+    const c = { title: $('cTitle').value.trim() || DEF_CFG.title, locations: $('cLoc').value.trim() || DEF_CFG.locations, issueTime: $('cTime').value.trim() || DEF_CFG.issueTime, shootDate: st.cfg.shootDate || '' };
+    st.cfg = c; refresh();
+    if (!st.db) { $('cMsg').textContent = 'Applied on this screen only.'; return }
+    try { await st.db.doc('config/main').set(c); $('cMsg').textContent = 'Header saved.' } catch (e) { $('cMsg').textContent = 'Not saved: ' + ((e && e.message) || 'store unavailable') }
+  };
+}
+// while a model cell has focus, update everything except the model rows themselves
+function refreshLight() { refresh() }
+function fillCfg() { $('cTitle').value = st.cfg.title; $('cLoc').value = st.cfg.locations; $('cTime').value = st.cfg.issueTime }
+
+
+// ---------- Refresh: start the INAMHI station reading (scheduled task on your computer) ----------
+const STATION_TASK = 'trig_014t3PMofQUKLE8fscjUh2wi', STATION_SERVER = 'Claude Code Remote';
+const STATION_WAIT = 90e3, STATION_GAP = 60e3;
+const FORECAST_TASK = 'trig_01Hk7Engzus5w2jP1fxBoRMC', FORECAST_WAIT = 90e3, FORECAST_GAP = 60e3;
+function checkForecast(doc) {
+  if (!st.fcAt) return;
+  const at = doc && doc.auto && doc.auto.fetchedAt ? String(doc.auto.fetchedAt).slice(0, 16) : '';
+  if (at && at >= st.fcAtEc && st.date === st.fireDate) { st.fcAt = 0; clearTimeout(st.fcTimer); st.fcMsg = 'Forecasts gathered again at ' + at.slice(11) + '.'; st.fcErr = false }
+}
+async function refreshForecasts(now) {
+  if (st.fcAt && Date.now() - st.fcAt < FORECAST_GAP) return;
+  try {
+    await st.mcp.callTool(STATION_SERVER, 'fire_trigger', { trigger_id: FORECAST_TASK, text: 'On-demand refresh requested from the page at ' + now.hm + ' Ecuador time: use the current date and time; all other rules are unchanged.' }, { cache: false });
+    st.fcAt = Date.now(); st.fcAtEc = now.date + 'T' + now.hm; st.fireDate = now.date; st.fcErr = false;
+    st.fcMsg = 'Gathering the weather forecasts, started ' + now.hm + '.';
+    clearTimeout(st.fcTimer);
+    st.fcTimer = setTimeout(() => { if (!st.fcAt) return; st.fcAt = 0; st.fcMsg = 'The forecasts were not updated. Press Refresh again in a few minutes.'; st.fcErr = true; refresh() }, FORECAST_WAIT);
+  } catch (e) { st.fcMsg = 'Forecasts not gathered again: ' + ((e && e.message) || (e && e.code) || 'the connector did not answer') + '.'; st.fcErr = true }
+  refresh();
+}
+function gaugeMsg(t, err) { st.gaugeMsg = t; st.gaugeErr = !!err; refresh() }
+function checkGauge(gg) {
+  if (!st.fireAt) return;
+  const at = gg && gg.fetchedAt ? String(gg.fetchedAt).slice(0, 16) : '';
+  if (at && at >= st.fireAtEc && st.date === st.fireDate) { st.fireAt = 0; clearTimeout(st.fireTimer); st.gaugeMsg = 'Station readings updated at ' + at.slice(11) + '.'; st.gaugeErr = false; const b = $('dRefresh'); b.disabled = false; b.textContent = 'Refresh' }
+}
+async function refreshStations() {
+  const b = $('dRefresh');
+  try { await flush() } catch (e) {}
+  if (!st.mcp) { try { sessionStorage.setItem('naaDate', st.date) } catch (e) {} location.reload(); return }
+  if (st.fireAt && Date.now() - st.fireAt < STATION_GAP) { gaugeMsg('A station reading is already running. It appears here by itself in a few minutes.'); return }
+  b.disabled = true; b.textContent = 'Starting…';
+  const now = ecNow();
+  try {
+    await st.mcp.callTool(STATION_SERVER, 'fire_trigger', { trigger_id: STATION_TASK }, { cache: false });
+    st.fireAt = Date.now(); st.fireAtEc = now.date + 'T' + now.hm; st.fireDate = now.date;
+    if (st.date !== now.date) await setDate(now.date);
+    b.textContent = 'Reading stations…';
+    gaugeMsg('Reading the INAMHI stations, started ' + now.hm + '.');
+    clearTimeout(st.fireTimer);
+    st.fireTimer = setTimeout(() => { if (!st.fireAt) return; st.fireAt = 0; b.disabled = false; b.textContent = 'Refresh'; gaugeMsg('The INAMHI stations did not answer. Press Refresh again in a few minutes, or enter the level from the INAMHI Visor.', true) }, STATION_WAIT);
+  } catch (e) {
+    b.disabled = false; b.textContent = 'Refresh';
+    const c = e && e.code, m = (e && e.message) || '';
+    gaugeMsg(
+      c === 'needs_reauth' ? 'Stations not read: reconnect the Claude Code Remote connector in claude.ai Settings, Connectors, then press Refresh.'
+      : c === 'server_not_connected' || c === 'selection_required' ? 'Stations not read: the Claude Code Remote connector is not available in this view. Add it in claude.ai Settings, Connectors.'
+      : c === 'not_in_manifest' ? 'Stations not read: this page is not allowed to start the station reading. Allow Claude Code Remote in the page\'s Permissions menu.'
+      : c === 'approval_required' || c === 'consent_required' || c === 'cancelled' ? 'Stations not read: the request was not approved. Press Refresh and allow it to start the station reading.'
+      : c === 'blocked_by_policy' ? 'Stations not read: your organization does not allow this page to start tasks.'
+      : c === 'tool_error' ? 'Stations not read: the station task could not be started (' + m + '). It may be switched off in your scheduled tasks.'
+      : 'Stations not read: ' + (m || 'the connector did not answer') + '. Press Refresh to try again.', true);
+  }
+  await refreshForecasts(now);
+}
+
+const H2C_URL = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+function loadScript(src, ready) {
+  if (ready()) return Promise.resolve();
+  return new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = src; sc.onload = () => ready() ? res() : rej(new Error('the snapshot library did not load')); sc.onerror = () => rej(new Error('the snapshot library could not be loaded')); document.head.appendChild(sc) });
+}
+async function start() {
+  buildForm(); wire(); fillCfg(); refresh();
+  const cl = window.claude;
+  const db = cl && cl.use ? await cl.use('db') : null;
+  st.db = db;
+  if (!db) { st.loaded = true; banner('The record cannot be loaded or saved in this view. Open the page signed in to Claude. You can still fill the form and copy the brief.'); refresh(); return }
+  db.collection('briefs').orderBy('date', 'desc').limit(200).onSnapshot(snap => {
+    const m = new Map(); snap.docs.forEach(d => { const x = d.data(); if (x) m.set(d.id, x) });
+    st.docs = m; st.loaded = true; refresh();
+  }, e => { st.failed = true; st.loaded = true; banner('The record stopped updating (' + ((e && e.message) || 'connection lost') + '). Reload the page to reconnect.'); refresh() });
+  db.collection('gauges').orderBy('date', 'desc').limit(12).onSnapshot(snap => { st.gaugeList = snap.docs.map(d => d.data()).filter(Boolean); st.gaugeDocs = (st.gaugeDocs || 0) + 1; updateCorr(); refresh() }, () => {});
+  db.collection('forecasts').orderBy('date', 'desc').limit(40).onSnapshot(snap => { st.fcList = snap.docs.map(d => d.data()).filter(Boolean); st.fcLoaded = true; updateCorr(); refresh() }, () => { st.fcLoaded = false });
+  db.doc('config/main').onSnapshot(s => { if (s.exists) { st.cfg = Object.assign({}, DEF_CFG, s.data()); if (!$('cTitle').matches(':focus') && !$('cLoc').matches(':focus') && !$('cTime').matches(':focus')) fillCfg(); refresh() } }, () => {});
+  cl.use('mcp').then(m => { st.mcp = m }).catch(() => {});
+  const dl = cl && cl.use ? await cl.use('downloads') : null;
+  if (dl && window.jspdf && window.jspdf.jsPDF) {
+    const pb = $('bPdf'); pb.hidden = false;
+    pb.onclick = async () => {
+      const m = $('bMsg'); m.dataset.kind = ''; pb.disabled = true; pb.textContent = 'Preparing PDF…';
+      const root = document.documentElement, prevTheme = root.getAttribute('data-theme');
+      let stamp = null;
+      try {
+        await loadScript(H2C_URL, () => window.html2canvas);
+        const now = ecNow();
+        stamp = document.createElement('p'); stamp.className = 'snapstamp';
+        stamp.textContent = 'Snapshot of the assessment for ' + dateFmt(st.date, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) + ' · generated ' + now.date + ' ' + now.hm + ' Ecuador time' + ((st.docs.get(st.date) || {}).status === 'issued' ? ' · issued' : ' · draft');
+        const wrap = document.querySelector('.wrap'); wrap.insertBefore(stamp, wrap.firstChild);
+        root.setAttribute('data-theme', 'light'); document.body.classList.add('snapping'); refresh();
+        await new Promise(r => setTimeout(r, 250));
+        const W = 820, scale = 1.5;
+        const canvas = await window.html2canvas(wrap, { windowWidth: W, width: W, scale, backgroundColor: '#f1f4ef', useCORS: true, logging: false,
+          ignoreElements: el => el.classList && el.classList.contains('nosnap'),
+          // textareas render as one clipped line in a snapshot: show their full text in a box instead
+          onclone: doc => doc.querySelectorAll('textarea').forEach(t => { const src = document.getElementById(t.id), d = doc.createElement('div'); d.className = 'tasnap' + (t.classList.contains('locked') ? ' locked' : ''); d.textContent = (src ? src.value : t.value) || ''; t.replaceWith(d) }) });
+        const pw = canvas.width / scale, ph = canvas.height / scale, MAXH = 14000;
+        const J = window.jspdf.jsPDF, pdf = new J({ unit: 'pt', format: [pw, Math.min(ph, MAXH)], orientation: 'portrait', compress: true });
+        pdf.setProperties({ title: 'Napo Basin assessment ' + st.date, subject: 'Daily weather and hazard assessment, snapshot of the tool', creator: 'NAA Daily Field Assessment' });
+        for (let y = 0, i = 0; y < ph; y += MAXH, i++) {
+          const h = Math.min(MAXH, ph - y), part = document.createElement('canvas');
+          part.width = canvas.width; part.height = Math.round(h * scale);
+          part.getContext('2d').drawImage(canvas, 0, Math.round(y * scale), canvas.width, part.height, 0, 0, canvas.width, part.height);
+          if (i) pdf.addPage([pw, h], 'portrait');
+          pdf.addImage(part.toDataURL('image/jpeg', 0.86), 'JPEG', 0, 0, pw, h);
+        }
+        await dl.save({ filename: 'napo-basin-assessment-' + st.date + '.pdf', data: pdf.output('arraybuffer') });
+        m.textContent = 'PDF saved: a full snapshot of the tool, one long page that scrolls on a phone, tablet or computer.';
+      } catch (e) { if (e && e.code === 'declined') m.textContent = ''; else { m.textContent = 'PDF not saved: ' + ((e && e.message) || 'export is unavailable in this view') + '.'; m.dataset.kind = 'err' } }
+      finally {
+        if (stamp) stamp.remove();
+        if (prevTheme === null) root.removeAttribute('data-theme'); else root.setAttribute('data-theme', prevTheme);
+        document.body.classList.remove('snapping'); pb.disabled = false; pb.textContent = 'Export PDF'; refresh();
+      }
+    };
+  }
+  if (dl) { const b = $('bCsv'); b.hidden = false; b.onclick = async () => { const data = csv(); if (!data) return; try { await dl.save({ filename: 'napo-basin-assessment-record.csv', data }) } catch (e) { if (e && e.code !== 'declined') $('bMsg').textContent = 'Export not available in this view.' } } }
+}
+start();
+</script>
+
+
+</body>
+</html>
