@@ -146,6 +146,8 @@ label.check { display: flex; gap: 10px; align-items: center; font-size: 15px; co
 .o5chart text { font-family: var(--f-body); fill: var(--ink2); font-size: 12px }
 .o5chart .hit:hover + .col, .o5chart .hit:focus + .col { opacity: 1 }
 .o5chart .hit.sel { fill: var(--accent); fill-opacity: .1 }
+.stairs { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line) }
+.stairsnow { margin: 0 0 4px; font-size: 15px }
 .svgtip { position: absolute; z-index: 50; max-width: min(320px, calc(100vw - 24px)); padding: 8px 10px; border-radius: 6px; background: var(--card); color: var(--ink); border: 1px solid var(--line); box-shadow: 0 4px 16px rgba(0,0,0,.18); font-size: 13px; line-height: 1.4; pointer-events: none }
 .svgtip b { display: block; margin-bottom: 2px }
 .tablewrap { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 6px }
@@ -665,6 +667,86 @@ function outlook34(o) {
   }
   return rows;
 }
+// Stairs station at Yarina (17 km below Coca): wooden ladder, read as steps clear of the water (fraction = gap from the
+// lowest dry step to the water, as part of one step). Provisional fit to 10 dated photos, 8 to 14 Oct 2026 (RMS error 0.4 step):
+// steps = 40.84 - 5.79 x (H1135 + 0.4 x H1134), both read 3 h earlier (travel time to Yarina). About 5.8 steps per metre at Coca.
+const STAIRS = { a: 40.84, b: 5.79, w: 0.4, lagH: 3, max: 8, photos: [['2026-10-08T11:38', 5.4], ['2026-10-08T16:34', 5.0], ['2026-10-10T08:29', 4.5], ['2026-10-10T13:09', 5.3], ['2026-10-10T14:52', 5.55], ['2026-10-10T16:18', 5.45], ['2026-10-12T16:18', 4.6], ['2026-10-13T08:02', 6.2], ['2026-10-13T17:11', 6.9], ['2026-10-14T06:23', 7.3]],
+  bands: [[0, 2, 4, 'stairs nearly under'], [2, 4, 3, 'high water'], [4, 6.5, 1, 'normal'], [6.5, 99, 2, 'low water, mud bank']] };
+function stairsOf(h35, h34) { if (!isNum(h35) || !isNum(h34)) return null; return STAIRS.a - STAIRS.b * (h35 + STAIRS.w * h34) }
+function stairsBand(v) { return STAIRS.bands.find(b => v >= b[0] && v < b[1]) || STAIRS.bands[0] }
+function stairsWord(v) { return v === null ? '–' : v <= 0 ? 'all steps under water' : v >= STAIRS.max ? 'water below the ladder (' + STAIRS.max + '+ steps clear)' : fmt(v, 1) + ' steps clear' }
+// hourly stairs series from the gauge history (times local, as UTC ms): value at t uses the readings at t - 3 h
+function stairsSeries(hist) {
+  const a = (hist && hist.lvl) || [], b = new Map((hist && hist.lvl34) || []), out = [];
+  a.forEach(([t, v]) => { const w = b.get(t); if (isNum(w)) out.push([t + STAIRS.lagH * 36e5, stairsOf(v, w)]) });
+  return out;
+}
+function stairsNow(o) {
+  const g = o.gauge && Array.isArray(o.gauge.levels) ? o.gauge.levels : [], a = g.find(x => x.code === 'H1135'), b = g.find(x => x.code === 'H1134');
+  const h35 = a && isNum(a.now) ? a.now : o.n('riverLevel'), h34 = b && isNum(b.now) ? b.now : o.n('h1134'), at = (a && a.at) || o.s('riverTime');
+  let v = stairsOf(h35, h34); if (v === null) return null;
+  if (typeof gaugeHist === 'function' && /^\d\d:\d\d$/.test(at || '')) v += stairsOff(stairsAnchor(gaugeHist()), Date.parse(o.date + 'T' + at + ':00Z') + STAIRS.lagH * 36e5);
+  const vt = /^\d\d:\d\d$/.test(at || '') ? String((Number(at.slice(0, 2)) + STAIRS.lagH) % 24).padStart(2, '0') + at.slice(2) : '';
+  return { v, at, vt };
+}
+// observed stairs readings: calibration photos plus readings typed in "Observed" (steps clear and time), newest last
+function stairsObsList() {
+  const out = STAIRS.photos.map(([ts, v]) => ({ t: Date.parse(ts + ':00Z'), v, src: 'photo' }));
+  if (typeof st !== 'undefined' && st.docs) st.docs.forEach((doc, d) => { const m = (doc && doc.man) || {}, loc = d === st.date ? st.local || {} : {}; const v = 'stairsObs' in loc ? loc.stairsObs : m.stairsObs, tm = ('stairsObsTime' in loc ? loc.stairsObsTime : m.stairsObsTime) || '07:00'; if (isNum(v) && /^\d\d:\d\d$/.test(tm)) out.push({ t: Date.parse(d + 'T' + tm + ':00Z'), v, src: 'reading' }) });
+  return out.sort((a, b) => a.t - b.t);
+}
+// correction from the latest observed reading: observed minus model at that time, fading to nothing over 72 h
+function stairsAnchor(hist) {
+  const obs = stairsObsList(), ser = stairsSeries(hist); if (!obs.length || !ser.length) return null;
+  const last = obs[obs.length - 1], near = ser.filter(p => Math.abs(p[0] - last.t) <= 2 * 36e5).sort((a, b) => Math.abs(a[0] - last.t) - Math.abs(b[0] - last.t))[0];
+  if (!near) return null;
+  return { t: last.t, v: last.v, off: last.v - near[1], src: last.src, at: (t => Math.max(0, 1 - (t - last.t) / (72 * 36e5)))(0) };
+}
+function stairsOff(an, t) { if (!an) return 0; const f = Math.max(0, Math.min(1, 1 - (t - an.t) / (72 * 36e5))); return an.off * f }
+function stairsFc(o) {
+  if (!o.o5 || !o.o34) return null;
+  const an = typeof gaugeHist === 'function' ? stairsAnchor(gaugeHist()) : null;
+  return o.o5.slice(1).map(r => { const q = o.o34.find(x => x.date === r.date); if (!q) return null; const c = stairsOff(an, Date.parse(r.date + 'T17:00:00Z')); return { date: r.date, mid: stairsOf(r.mid, q.mid) + c, lo: stairsOf(r.hi, q.hi) + c, hi: stairsOf(r.lo, q.lo) + c, corr: c } }).filter(Boolean);
+}
+function stairsChart(o, hist) {
+  const LT = (d, hm) => Date.parse(d + 'T' + (hm || '17:00') + ':00Z'), DAY = 864e5;
+  const W = Math.max(300, Math.min(760, (typeof document !== 'undefined' && document.getElementById('o5chart') || {}).clientWidth || 600));
+  const narrow = W < 520, m = { l: 40, r: narrow ? 58 : 72, t: 22 }, PH = 130, H = m.t + PH + 26;
+  const pw = W - m.l - m.r, xs = LT(addDays(o.date, -5), '05:00'), xe = LT(addDays(o.date, 6), '05:00'), X = t => m.l + pw * (t - xs) / (xe - xs);
+  const cl = v => Math.max(0, Math.min(STAIRS.max, v)), Y = v => m.t + PH * cl(v) / STAIRS.max; // flipped: fewer steps clear (higher water) plots higher, like a water level
+  const path = a => a.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+  const txt = (x, y, t, st, anc) => '<text x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '"' + (anc ? ' text-anchor="' + anc + '"' : '') + (st ? ' style="' + st + '"' : '') + '>' + t + '</text>';
+  const halo = 'paint-order:stroke;stroke:var(--card);stroke-width:4px;stroke-linejoin:round;';
+  const COL = { 1: 'var(--ok-bg)', 2: 'var(--warn-bg)', 3: 'var(--hi-bg)', 4: 'var(--bad-bg)' };
+  let g = '';
+  STAIRS.bands.forEach(b => { const y1 = Y(b[0]), y0 = Y(Math.min(b[1], STAIRS.max)); g += '<rect x="' + m.l + '" y="' + y1.toFixed(1) + '" width="' + pw + '" height="' + (y0 - y1).toFixed(1) + '" fill="' + COL[b[2]] + '" opacity=".55"/>' + (narrow ? '' : txt(m.l + 4, y1 + 12, b[3], 'fill:var(--muted);font-size:10.5px;' + halo)) });
+  for (let v = 0; v <= STAIRS.max; v += 2) g += '<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + Y(v) + '" y2="' + Y(v) + '" stroke="var(--line)"/>' + txt(m.l - 6, Y(v) + 4, String(v), '', 'end');
+  for (let k = -5; k <= 5; k++) { const d = addDays(o.date, k); if (k > -5) g += '<line x1="' + X(LT(d, '05:00')) + '" x2="' + X(LT(d, '05:00')) + '" y1="' + m.t + '" y2="' + (m.t + PH) + '" stroke="var(--line)"/>'; g += txt(X(LT(d)), H - 8, narrow ? String(Number(d.slice(8))) : k === 0 ? 'Today' : dateFmt(d, { weekday: 'short', day: 'numeric' }), k === 0 ? 'fill:var(--ink);font-weight:600' : '', 'middle') }
+  const ser = stairsSeries(hist).filter(p => p[0] >= xs && p[0] <= xe), now = stairsNow(o), fc = stairsFc(o);
+  const nowT = ser.length ? ser[ser.length - 1][0] : LT(o.date, '08:00');
+  g += '<line x1="' + X(nowT) + '" x2="' + X(nowT) + '" y1="' + m.t + '" y2="' + (m.t + PH) + '" stroke="var(--ink2)"/>';
+  if (fc && fc.length) {
+    const start = ser.length ? ser[ser.length - 1][1] : now ? now.v : fc[0].mid, pts = [[nowT, start, start, start]].concat(fc.map(r => [LT(r.date), r.lo, r.hi, r.mid]));
+    const hP = pts.map(r => [X(r[0]), Y(r[2])]), lP = pts.map(r => [X(r[0]), Y(r[1])]), mP = pts.map(r => [X(r[0]), Y(r[3])]);
+    g += '<path d="' + path(hP) + ' ' + path(lP.slice().reverse()).replace('M', 'L') + ' Z" fill="var(--accent)" opacity=".16"/><path d="' + path(mP) + '" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>';
+    mP.slice(1).forEach(q => { g += '<circle cx="' + q[0].toFixed(1) + '" cy="' + q[1].toFixed(1) + '" r="3" fill="var(--accent)"/>' });
+    const last = pts[pts.length - 1]; g += txt(W - m.r + 6, Y(last[3]) + 4, 'Likely ' + fmt(cl(last[3]), 1), 'fill:var(--ink);font-weight:600;font-size:11px');
+  }
+  if (ser.length > 1) { let segs = [[]]; ser.forEach((p, i) => { if (i && p[0] - ser[i - 1][0] > 3 * 36e5) segs.push([]); segs[segs.length - 1].push([X(p[0]), Y(p[1])]) }); segs.filter(q => q.length > 1).forEach(q => { g += '<path d="' + path(q) + '" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round"/>' }) }
+  // calibration photos
+  stairsObsList().forEach(({ t, v, src }) => { if (t < xs || t > xe) return; const ts = new Date(t).toISOString(); g += '<g><rect x="' + (X(t) - 4).toFixed(1) + '" y="' + (Y(v) - 4).toFixed(1) + '" width="8" height="8" transform="rotate(45 ' + X(t).toFixed(1) + ' ' + Y(v).toFixed(1) + ')" fill="' + (src === 'photo' ? 'var(--card)' : 'var(--ink)') + '" stroke="var(--ink)" stroke-width="1.5"/><title>' + esc((src === 'photo' ? 'Photo ' : 'Reading ') + dateFmt(ts.slice(0, 10), { month: 'short', day: 'numeric' }) + ' ' + ts.slice(11, 16) + '\n' + fmt(v, 1) + ' steps clear') + '</title></g>' });
+  // tap a day
+  for (let k = -5; k <= 5; k++) {
+    const d = addDays(o.date, k), a = LT(d, '05:00'), dl = ser.filter(p => p[0] >= a && p[0] < a + DAY).map(p => cl(p[1])), r = fc ? fc.find(x => x.date === d) : null, parts = [dateFmt(d, { weekday: 'short', month: 'short', day: 'numeric' }) + ' 05:00 to ' + dateFmt(addDays(d, 1), { weekday: 'short' }) + ' 05:00'];
+    if (dl.length) parts.push('estimated ' + fmt(Math.min(...dl), 1) + '–' + fmt(Math.max(...dl), 1) + ' steps clear');
+    if (r) parts.push('likely ' + fmt(cl(r.mid), 1) + ' steps clear (range ' + fmt(cl(r.lo), 1) + '–' + fmt(cl(r.hi), 1) + ')');
+    if (parts.length > 1) g += '<rect class="hit" x="' + X(a) + '" y="' + m.t + '" width="' + (X(a + DAY) - X(a)) + '" height="' + PH + '" fill="transparent"><title>' + esc(parts.join('\n')) + '</title></rect>';
+  }
+  g += txt(m.l, 12, narrow ? 'Stairs station, Yarina: steps clear (higher = more water)' : 'Stairs station, Yarina: steps clear of the water, scale flipped so the line rises with the water (◇ your photos)', 'fill:var(--ink2);font-size:11px');
+  const head = now ? '<p class="stairsnow"><b>🪜 Stairs station: ' + esc(stairsWord(now.v)) + '</b> <span class="tiny">' + esc(stairsBand(cl(now.v))[3]) + (now.vt ? ' · around ' + now.vt + ', from the ' + now.at + ' readings' : '') + '</span></p>' : '';
+  const an = stairsAnchor(hist), tb = fc && fc.length ? '<div class="tablewrap"><table><thead><tr><th>Stairs station, day 05:00 to 05:00</th><th class="r">Likely steps clear</th><th class="r">Range</th><th>Level</th></tr></thead><tbody>' + fc.map(r => '<tr><td>' + dateFmt(r.date, { weekday: 'short', month: 'short', day: 'numeric' }) + '</td><td class="r"><b>' + fmt(cl(r.mid), 1) + '</b></td><td class="r">' + fmt(cl(r.lo), 1) + '–' + fmt(cl(r.hi), 1) + '</td><td>' + esc(stairsBand(cl(r.mid))[3]) + '</td></tr>').join('') + '</tbody></table></div>' + (an && Math.abs(an.off) >= 0.05 ? '<p class="tiny">Adjusted by ' + sgn(an.off, 1) + ' step from your ' + (an.src === 'photo' ? 'photo' : 'reading') + ' of ' + dateFmt(new Date(an.t).toISOString().slice(0, 10), { month: 'short', day: 'numeric' }) + ' ' + new Date(an.t).toISOString().slice(11, 16) + ' (' + fmt(an.v, 1) + ' steps), fading out over 3 days.</p>' : '') : '';
+  return head + '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="Stairs station at Yarina: steps clear of the water, estimated for the past 5 days and forecast for the next 5">' + g + '</svg>' + tb;
+}
 // hist: { lvl: [[ms, m]...] hourly H1135 level, rain: { 'YYYY-MM-DD': mm } H1135 rain per 05:00-to-05:00 window, keyed by its start date }; times are Ecuador local written as UTC ms
 function o5Chart(o, sd, hist) {
   const rows = o.o5, now = o.n('riverLevel'), LT = (d, hm) => Date.parse(d + 'T' + (hm || '17:00') + ':00Z'), DAY = 864e5;
@@ -1082,6 +1164,7 @@ function briefText(o, cfg) {
     L.push('🎯 Forecast confidence: ' + (w < 0.8 ? 'HIGH' : w < 1.5 ? 'MODERATE' : 'LOW'));
   }
   { const g = o.gauge, up = g && Array.isArray(g.levels) ? g.levels.filter(s => s.code !== 'H1135') : []; if (up.length) L.push('🏞️ Upstream gauges: ' + up.map(s => s.name.replace(/ AJ Coca| DJ Oyacachi|Coca at /g, '') + ' ' + fmt(s.now, 2) + ' m' + (isNum(s.ch24) ? ' (' + sgn(s.ch24) + ')' : '')).join(' | ')) }
+  { const sn = stairsNow(o), sf = stairsFc(o); if (sn) L.push('🪜 Stairs station (Yarina): ' + stairsWord(sn.v) + (sn.vt ? ' around ' + sn.vt : '') + ' (' + stairsBand(Math.max(0, Math.min(STAIRS.max, sn.v)))[3] + ')' + (sf && sf[0] ? ' | tomorrow likely ' + stairsWord(Math.max(0, Math.min(STAIRS.max, sf[0].mid))) : '') + ' (estimate)') }
   // operational outlook (editable wording)
   { const ol = String(o.tx.txOutlook || '').split('\n').map(x => x.trim()).filter(Boolean); if (ol.length) { L.push('', SEP, '', '🧭 OPERATIONAL OUTLOOK', ''); ol.forEach(x => L.push(hasEmoji(x) ? x : '⚠️ ' + x)) } }
   // advisory
@@ -1200,7 +1283,7 @@ const GROUPS = [
     fields: [['advTitle', 'Heading', '', 'text', null, 'WEATHER WARNING ADVISORY', 'wide'], ['advPeriod', 'Period', '', 'text', null, 'OCT 9–11', ''], ['advSource', 'Source', '', 'text', null, 'INAMHI advisory no. …', ''], ['advText', 'Advisory text', '', 'long', null, '', 'wide']] },
   { id: 'obs', title: 'Observed, last 24 h', hint: 'What actually happened, for the record', fields: [
     ['obsRain', 'Rain at Coca', 'mm', 'num'], ['obsTmax', 'Max temp', '°C', 'num'], ['obsTd', 'Dew point at max', '°C', 'num'],
-    ['obsTs', 'Thunderstorms', '', 'sel', [['', '—'], ['none', 'None'], ['nearby', 'Nearby'], ['overhead', 'Overhead']]], ['obsNote', 'Conditions and incidents', '', 'long', null, '', 'wide']] },
+    ['obsTs', 'Thunderstorms', '', 'sel', [['', '—'], ['none', 'None'], ['nearby', 'Nearby'], ['overhead', 'Overhead']]], ['stairsObs', 'Stairs station, steps clear', 'steps', 'num'], ['stairsObsTime', 'Stairs reading time', '', 'text', null, '07:00'], ['obsNote', 'Conditions and incidents', '', 'long', null, '', 'wide']] },
   { id: 'lv', title: 'Hazard levels', hint: 'Suggested from the numbers; override when your judgement differs', fields: [
     ['lvRain', 'Rain', '', 'sel', LVO], ['lvLightning', 'Lightning', '', 'sel', LVO], ['lvHeat', 'Heat', '', 'sel', LVO], ['lvRiver', 'River', '', 'sel', LVO], ['lvWind', 'Wind', '', 'sel', LVO]] },
   { id: 'tx', title: 'Wording', hint: 'Edit any line; Reset returns it to the automatic wording', custom: [
@@ -1289,7 +1372,7 @@ function cur() {
   let lo = null;
   if (!(doc && doc.gauge && doc.gauge.vals && isNum(doc.gauge.vals.riverLevel)) && !(st.local && isNum(st.local.riverLevel)) && !(doc && doc.man && isNum(doc.man.riverLevel))) {
     lo = lastObsFor(d);
-    if (lo && (lo.date === d || Date.parse(d + 'T05:00:00Z') - lo.ms <= 36 * 36e5)) doc = Object.assign({}, doc || {}, { fb: { riverLevel: lo.v, riverTime: lo.date === d ? lo.hm : lo.label + ' (last reading)' } });
+    if (lo && (lo.date === d || Date.parse(d + 'T05:00:00Z') - lo.ms <= 36 * 36e5)) { const l34 = (gaugeHist().lvl34 || []).filter(p => p[0] <= lo.ms + 36e5).pop(); doc = Object.assign({}, doc || {}, { fb: { riverLevel: lo.v, riverTime: lo.date === d ? lo.hm : lo.label + ' (last reading)', h1134: l34 && lo.ms - l34[0] <= 6 * 36e5 ? l34[1] : undefined } }) }
     else lo = null;
   }
   const o = compute(d, doc, st.local, st.docs.get(addDays(d, -1))); o.lastObs = lo; return o;
@@ -1414,7 +1497,7 @@ function refresh() {
       ''
     : '<p class="sub">Enter or gather the level at Coca to see the five-day range.</p>';
   if (document.activeElement !== $('cShoot')) $('cShoot').value = sd;
-  $('o5chart').innerHTML = o.o5 ? o5Chart(o, sd, Object.assign({ fc: st.fcList || [] }, gaugeHist())) + '<p class="tiny">Tap a day on the chart (or hover with a mouse) to read its values. Past forecasts of the likely level, for the days already observed: ● 24 h ahead · ■ 48 h · ▲ 72 h · ▬ 96 h.</p>' : '';
+  $('o5chart').innerHTML = o.o5 ? o5Chart(o, sd, Object.assign({ fc: st.fcList || [] }, gaugeHist())) + '<div class="stairs">' + stairsChart(o, gaugeHist()) + '<p class="tiny">Provisional: worked out from H1135 and H1134 3 hours earlier and their five-day forecasts, fitted to your 10 dated photos from 8 to 14 Oct (◇ photos, ◆ readings); typical error about half a step, each step ≈ 17 cm of river at Coca. Type a stairs reading in Observed (steps clear and time) and the forecast is corrected from it.</p></div>' + '<p class="tiny">Tap a day on the chart (or hover with a mouse) to read its values. Past forecasts of the likely level, for the days already observed: ● 24 h ahead · ■ 48 h · ▲ 72 h · ▬ 96 h.</p>' : '';
   $('o5skill').innerHTML = skillHtml();
   maybeSaveForecast();
   {
