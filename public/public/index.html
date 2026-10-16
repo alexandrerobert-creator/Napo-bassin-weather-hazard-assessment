@@ -10,6 +10,7 @@
 </head>
 <body>
 
+
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600;700&display=swap">
 <style>
 /* Layout: gaps and hazard levels first, then the inputs on the left with the finished brief text pinned on the right; the record log below. Same tokens as Napo Reach Watch. */
@@ -145,6 +146,18 @@ label.check { display: flex; gap: 10px; align-items: center; font-size: 15px; co
 .o5chart svg { display: block; width: 100%; height: auto; overflow: visible }
 .o5chart text { font-family: var(--f-body); fill: var(--ink2); font-size: 12px }
 .o5chart .hit:hover + .col, .o5chart .hit:focus + .col { opacity: 1 }
+.o5chart .hit.sel { fill: var(--accent); fill-opacity: .1 }
+.stairs { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line) }
+.stairsnow { margin: 0 0 4px; font-size: 15px }
+.stairsin { border-top: 1px solid var(--line); padding-top: 12px; display: flex; flex-direction: column; gap: 10px }
+.qrow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center }
+.qrow .ql { font-size: 14px; color: var(--ink2); margin-right: 4px }
+.qrow button { min-width: 52px; font-size: 18px }
+.qrow button[aria-pressed="true"] { background: var(--ink); color: var(--card); border-color: var(--ink) }
+.sprev { font: 600 15px var(--f-display); font-variant-numeric: tabular-nums }
+td button.small { min-height: 28px }
+.svgtip { position: absolute; z-index: 50; max-width: min(320px, calc(100vw - 24px)); padding: 8px 10px; border-radius: 6px; background: var(--card); color: var(--ink); border: 1px solid var(--line); box-shadow: 0 4px 16px rgba(0,0,0,.18); font-size: 13px; line-height: 1.4; pointer-events: none }
+.svgtip b { display: block; margin-bottom: 2px }
 .tablewrap { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 6px }
 table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums }
 th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap }
@@ -259,7 +272,7 @@ section { display: flex; flex-direction: column; gap: 10px; min-width: 0 }
           <li>Export PDF produces an A4 report of the day on screen: hazard levels, a table of the numbers, then the brief text. Emoji are left out of the PDF because its built-in fonts have none. A draft is marked as a draft.</li>
           <li>The issue time fills itself with the time you open the page (Ecuador time). Type over it to change it; it is fixed when you mark the brief as issued.</li>
           <li>Every level and every line of wording can be overridden. Values tagged "auto" came from the morning gathering; "edited" are yours.</li>
-          <li>Gathered sources, read each time the page opens and when you press Refresh: MET Norway (ECMWF-based) hourly forecasts at Coca and the four upstream points; Open-Meteo for the model comparison (ECMWF, GFS, UKMO, ICON) and gusts; 7Timer (GFS-based) for instability; Coca airport METAR; GEOGLOWS modelled flow. Official advisories are not searched automatically in this version: check INAMHI and SNGR and tick the box. Your entries and settings stay in this browser; each morning's river forecast and the briefs marked as issued are shared with everyone using this site.</li>
+          <li>Gathered sources, read each time the page opens and when you press Refresh: MET Norway (ECMWF-based) hourly forecasts at Coca and the four upstream points; Open-Meteo for the model comparison (ECMWF, GFS, UKMO, ICON) and gusts; 7Timer (GFS-based) for instability; Coca airport METAR; GEOGLOWS modelled flow. Official advisories are not searched automatically in this version: check INAMHI and SNGR and tick the box. The day's brief is shared: entries, edits and Issue appear for everyone using this site within about 30 seconds, and if two people change the same field the last save wins. Live readings are read by each device; the launch day and header settings stay in this browser; each day's river forecast is kept for everyone.</li>
         </ul>
       </div>
     </details>
@@ -268,31 +281,64 @@ section { display: flex; flex-direction: column; gap: 10px; min-width: 0 }
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
-/* Standalone runtime: stands in for the Claude page services. Records and settings stay in this browser (localStorage);
-   live data comes from this site's functions (/api/stations, /api/weather); each morning's river forecast and the briefs
-   marked as issued are shared with everyone using the site (/api/shared). */
+/* Standalone runtime: stands in for the Claude page services. Live data comes from this site's functions
+   (/api/stations, /api/weather) and is read by each browser. Shared with everyone using the site (/api/shared):
+   the day's brief (entries, status, issued text), saved field by field and re-read every 30 s, and each day's
+   river forecast. Settings (launch day, header) stay in this browser (localStorage). */
 (function () {
   const LS = 'naa:v1:';
   const ls = {
     get(k) { try { const v = localStorage.getItem(LS + k); return v ? JSON.parse(v) : null } catch (e) { return null } },
     set(k, v) { try { localStorage.setItem(LS + k, JSON.stringify(v)) } catch (e) {} },
+    del(k) { try { localStorage.removeItem(LS + k) } catch (e) {} },
     keys(p) { const out = []; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.indexOf(LS + p) === 0) out.push(k.slice(LS.length)) } } catch (e) {} return out }
   };
   const isObj = x => x && typeof x === 'object' && !Array.isArray(x);
   const merge = (a, b) => { const o = Object.assign({}, a || {}); Object.keys(b || {}).forEach(k => { o[k] = isObj(b[k]) && isObj(o[k]) ? merge(o[k], b[k]) : b[k] }); return o };
   const ecDate = () => new Date(Date.now() - 5 * 36e5).toISOString().slice(0, 10);
-  const subs = { briefs: [], gauges: [], forecasts: [], config: [] }, shared = { briefs: new Map(), forecasts: new Map() };
+  const subs = { briefs: [], gauges: [], forecasts: [], config: [] }, shared = { briefs: new Map(), forecasts: new Map(), drafts: new Map() };
+  const TOP = ['status', 'issuedAt', 'issuedOn', 'issuedTs', 'issuedText', 'final', 'createdTs'];
+  let postGen = 0;
   let forecastsLoaded = false;
   const api = async (path, opt) => { const r = await fetch(path, Object.assign({ cache: 'no-store' }, opt)); const j = await r.json().catch(() => ({})); if (!r.ok || j.error) throw new Error(j.error || 'HTTP ' + r.status); return j };
   const post = (kind, body) => api('/api/shared?kind=' + kind, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 
+  // local doc (live data read on this device) + shared draft (common entries) + outbox (this device's saves not yet confirmed)
   function briefDocs() {
-    const m = new Map(); shared.briefs.forEach((d, k) => m.set(k, d));
-    ls.keys('briefs/').forEach(k => {
-      const id = k.slice(7), loc = ls.get(k), sh = m.get(id);
-      m.set(id, sh && sh.status === 'issued' && loc.status !== 'issued' ? merge(loc, { status: 'issued', issuedAt: sh.issuedAt, issuedOn: sh.issuedOn, issuedTs: sh.issuedTs, issuedText: sh.issuedText, final: sh.final }) : loc);
+    const m = new Map(), ids = new Set([...shared.briefs.keys(), ...shared.drafts.keys(), ...ls.keys('briefs/').map(k => k.slice(7)), ...ls.keys('outbox/').map(k => k.slice(7))]);
+    ids.forEach(id => {
+      let d = Object.assign({ date: id }, ls.get('briefs/' + id) || {});
+      const old = shared.briefs.get(id), dr = shared.drafts.get(id), ob = ls.get('outbox/' + id);
+      if (old && !dr && old.status === 'issued') d = merge(d, { man: old.man || {}, status: 'issued', issuedAt: old.issuedAt, issuedOn: old.issuedOn, issuedTs: old.issuedTs, issuedText: old.issuedText, final: old.final });
+      [dr, ob].forEach(x => { if (!x) return; d.man = Object.assign({}, d.man || {}, x.man || {}); TOP.forEach(k => { if (k in x) d[k] = x[k] }) });
+      if (!d.status) d.status = 'draft';
+      m.set(id, d);
     });
     return m;
+  }
+  function draftPart(data) { const o = {}; if (data.man && typeof data.man === 'object') o.man = Object.assign({}, data.man); TOP.forEach(k => { if (k in data) o[k] = data[k] }); return Object.keys(o).length ? o : null }
+  const sending = new Set();
+  async function sendOutbox(id) {
+    if (sending.has(id)) return; const ob = ls.get('outbox/' + id); if (!ob) return;
+    sending.add(id);
+    try {
+      const j = await post('drafts', Object.assign({ date: id }, ob));
+      if (j.item) shared.drafts.set(id, j.item);
+      postGen++;
+      // drop what was sent unless it changed meanwhile
+      const now = ls.get('outbox/' + id) || {}; const left = { man: {} };
+      Object.keys(now.man || {}).forEach(k => { if (!ob.man || JSON.stringify(ob.man[k]) !== JSON.stringify(now.man[k])) left.man[k] = now.man[k] });
+      TOP.forEach(k => { if ((k in now) && JSON.stringify(now[k]) !== JSON.stringify(ob[k])) left[k] = now[k] });
+      if (Object.keys(left.man).length || Object.keys(left).length > 1) ls.set('outbox/' + id, left); else ls.del('outbox/' + id);
+      window.NAA_SHARED_ERR = null;
+    } catch (e) { window.NAA_SHARED_ERR = String(e && e.message || e) } finally { sending.delete(id) }
+    emit('briefs');
+    if (ls.get('outbox/' + id) && !window.NAA_SHARED_ERR) setTimeout(() => sendOutbox(id), 300);
+  }
+  const retryOutbox = () => ls.keys('outbox/').forEach(k => sendOutbox(k.slice(7)));
+  async function pollDraft(id) {
+    const gen = postGen;
+    try { const j = await api('/api/shared?kind=drafts&date=' + id); if (gen !== postGen) return; const d = j.items && j.items[0]; const before = JSON.stringify(shared.drafts.get(id) || null); if (d) shared.drafts.set(id, d); if (JSON.stringify(d || null) !== before) emit('briefs') } catch (e) {}
   }
   const gaugeDocs = () => { const m = new Map(); ls.keys('gauges/').forEach(k => m.set(k.slice(7), ls.get(k))); return m };
   const snapOf = map => ({ docs: [...map.entries()].sort((a, b) => a[0] < b[0] ? 1 : -1).map(([id, d]) => ({ id, data: () => d })) });
@@ -303,7 +349,7 @@ section { display: flex; flex-direction: column; gap: 10px; min-width: 0 }
   }
   const emitConfig = () => { const c = ls.get('config/main'); subs.config.forEach(f => f({ exists: !!c, data: () => c })) };
 
-  let pending = null;
+  let pending = null, retried = false;
   function loadLive(fresh) {
     if (pending) return pending;
     const q = fresh ? '?fresh=1' : '';
@@ -317,28 +363,39 @@ section { display: flex; flex-direction: column; gap: 10px; min-width: 0 }
       if (wx.status === 'fulfilled' && wx.value.auto) doc.auto = wx.value.auto;
       ls.set(key, doc); emit('briefs'); emit('gauges');
       window.NAA_LIVE = { at: Date.now(), stations: st.status === 'fulfilled', weather: wx.status === 'fulfilled', errors: [st, wx].filter(x => x.status === 'rejected').map(x => String(x.reason && x.reason.message)) };
+      if (st.status === 'fulfilled' && st.value.stale) window.NAA_LIVE.stale = st.value.staleReason || 'INAMHI did not answer';
+      // INAMHI can be slow: try the stations once more after 20 s
+      if ((st.status === 'rejected' || window.NAA_LIVE.stale) && !retried) { retried = true; setTimeout(() => { loadLive(true).finally(() => { retried = false }) }, 20e3) }
       return window.NAA_LIVE;
     }).finally(() => { pending = null });
     return pending;
   }
   async function loadShared() {
-    try { const j = await api('/api/shared?kind=briefs'); shared.briefs = new Map(j.items.map(x => [x.date, x])); emit('briefs') } catch (e) {}
+    try { const j = await api('/api/shared?kind=briefs'); shared.briefs = new Map(j.items.map(x => [x.date, x])) } catch (e) {}
+    try { const gen = postGen, j = await api('/api/shared?kind=drafts'); if (gen === postGen) shared.drafts = new Map(j.items.map(x => [x.date, x])) } catch (e) {}
+    emit('briefs'); retryOutbox();
     try { const j = await api('/api/shared?kind=forecasts'); shared.forecasts = new Map(j.items.map(x => [x.date, x])); forecastsLoaded = true; emit('forecasts') } catch (e) {}
   }
 
+  function queueDraft(id, data) {
+    const part = draftPart(data); if (!part) return;
+    const ob = ls.get('outbox/' + id) || { man: {} }; ob.man = Object.assign({}, ob.man || {}, part.man || {}); TOP.forEach(k => { if (k in part) ob[k] = part[k] });
+    ls.set('outbox/' + id, ob); setTimeout(() => sendOutbox(id), 0);
+  }
   function docRef(path) {
     const parts = path.split('/'), col = parts[0], id = parts[1];
     const after = d => {
-      if (col === 'briefs') { emit('briefs'); if (d.status === 'issued') post('briefs', Object.assign({}, d, { date: id })).then(() => { shared.briefs.set(id, d) }).catch(() => {}) }
+      if (col === 'briefs') emit('briefs');
       else if (col === 'config') emitConfig();
     };
     return {
       async get() { const d = ls.get(path); return { exists: !!d, data: () => d } },
       async set(data) {
+        if (col === 'briefs') queueDraft(id, data);
         if (col === 'forecasts') { await post('forecasts', data); if (!shared.forecasts.has(id)) shared.forecasts.set(id, data); emit('forecasts'); return }
         ls.set(path, data); after(data);
       },
-      async update(data) { const next = merge(ls.get(path), data); ls.set(path, next); after(next) },
+      async update(data) { if (col === 'briefs') queueDraft(id, data); const next = merge(ls.get(path), data); ls.set(path, next); after(next) },
       onSnapshot(cb) { if (col === 'config') { subs.config.push(cb); setTimeout(emitConfig, 0) } return () => {} }
     };
   }
@@ -358,7 +415,7 @@ section { display: flex; flex-direction: column; gap: 10px; min-width: 0 }
   try { const c = ls.get('coords'); if (c) window.NAA_COORDS = c } catch (e) {}
   let started = false;
   window.claude = { use: async name => {
-    if (name === 'db') { if (!started) { started = true; setTimeout(() => { loadLive(false); loadShared() }, 0); setInterval(() => { if (document.visibilityState === 'visible') loadLive(false) }, 15 * 60e3) } return db }
+    if (name === 'db') { if (!started) { started = true; setTimeout(() => { loadLive(false); loadShared() }, 0); setInterval(() => { if (document.visibilityState === 'visible') loadLive(false) }, 15 * 60e3); setInterval(() => { if (document.visibilityState === 'visible') { pollDraft(ecDate()); retryOutbox() } }, 30e3); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { pollDraft(ecDate()); retryOutbox() } }) } return db }
     return { mcp, downloads }[name] || null;
   } };
   window.NAA_STANDALONE = true;
@@ -372,7 +429,7 @@ const LV = ['Unconfirmed', 'Low', 'Moderate', 'High', 'Very high'];
 const RIVER_RAIN = ['M5189', 'M5187', 'M5190', 'M1124', 'M0008']; // rain stations listed in the Napo River section
 const RIVER_LOW = 4.5, RIVER_HIGH = 6.0;
 // Values gathered online (forecast task or INAMHI stations): when present they replace anything typed, and the field is read-only
-const LOCKED = new Set(['tmax', 'tmin', 'rh', 'rainDay', 'rainNight', 'rainNt', 'rainAM', 'rainPM', 'rainEve', 'cloudAM', 'cloudPM', 'rainUp', 'tsDay', 'tsNight', 'wind', 'gust', 'windDir', 'tmaxTom', 'rainTom', 'tsTom',
+const LOCKED = new Set(['tmax', 'tmin', 'rh', 'rainDay', 'rainNight', 'rainNt', 'rainAM', 'rainPM', 'rainEve', 'cloudAM', 'cloudPM', 'cloudNt', 'rainUp', 'tsDay', 'tsNight', 'wind', 'gust', 'windDir', 'tmaxTom', 'rainTom', 'tsTom',
   'riverLevel', 'riverTime', 'riverChange', 'riverTrend', 'h1134', 'obsRainUp', 'riverFlowPct', 'obsRain', 'obsTmax', 'obsTd', 'obsTs',
   'advActive', 'advTitle', 'advPeriod', 'advText', 'advSource']); // Napo at Coca (H1135), metres: below LOW = low, above HIGH = high
 const DEF_MODELS = [{ label: 'ECMWF' }, { label: 'GFS' }, { label: 'mblue AI' }];
@@ -476,10 +533,11 @@ const COCA_LAT = -0.4628, COCA_LON = -76.9872, COCA_ALT = 250, wbMemo = new Map(
 function calcWBGT(o) {
   const hrs = o.get('hourly'), key = o.date + JSON.stringify(hrs || [o.n('tmax'), o.n('rh'), o.n('wind'), o.n('cloudPM')]);
   if (wbMemo.has(key)) return wbMemo.get(key);
-  let best = null;
-  const one = (ms, Ta, rh, pSea, u10, cloud, est) => { if (!isNum(Ta) || !isNum(rh)) return; const r = WB.wbgt({ Ta, rh, P: WB.stationP(pSea, COCA_ALT), u10, cloud, ms, lat: COCA_LAT, lon: COCA_LON }); if (!best || r.sun > best.sun) best = Object.assign(r, { at: new Date(ms - 5 * 36e5).toISOString().slice(11, 16), est, Ta, rh }) };
+  let best = null; const all = [];
+  const one = (ms, Ta, rh, pSea, u10, cloud, est) => { if (!isNum(Ta) || !isNum(rh)) return; const r = WB.wbgt({ Ta, rh, P: WB.stationP(pSea, COCA_ALT), u10, cloud, ms, lat: COCA_LAT, lon: COCA_LON }); const at = new Date(ms - 5 * 36e5).toISOString().slice(11, 16); all.push({ at, sun: r.sun, shade: r.shade }); if (!best || r.sun > best.sun) best = Object.assign(r, { at, est, Ta, rh }) };
   if (Array.isArray(hrs) && hrs.length) hrs.forEach(h => one(Date.parse(h.ts), h.T, h.RH, isNum(h.p) ? h.p : 1012, isNum(h.ws) ? h.ws : 1.5, isNum(h.cl) ? h.cl : 50, false));
   else if (o.n('tmax') !== null && o.n('rh') !== null) one(Date.parse(o.date + 'T18:00:00Z'), o.n('tmax'), o.n('rh'), 1012, o.n('wind') !== null ? o.n('wind') / 3.6 : 1.5, o.n('cloudPM') !== null ? o.n('cloudPM') : 50, true);
+  if (best) best.hours = all.sort((x, y) => x.at < y.at ? -1 : 1);
   if (wbMemo.size > 400) wbMemo.clear(); wbMemo.set(key, best); return best;
 }
 function compute(date, doc, loc, prevDoc) {
@@ -543,7 +601,7 @@ function compute(date, doc, loc, prevDoc) {
   o.overall = Math.max(o.levels.rain, o.levels.lightning, o.levels.heat, o.levels.river, o.levels.wind);
 
   o.gauge = (doc && doc.gauge) || null;
-  o.o5 = outlook5(o);
+  o.o5 = outlook5(o); o.o34 = outlook34(o);
   // wording: yours, else the gathered wording while its numbers are untouched, else generated
   const GEN = { txRain: genRain, txLightning: genLightning, txTemp: genTemp, txRiver: genRiver, txWind: genWind, txOutlook: genOutlook, txModels: genModels, txTomorrow: genTomorrow, txWarning: genWarning };
   o.tx = {}; o.txSrc = {};
@@ -588,6 +646,126 @@ function outlook5(o) {
   }
   return rows;
 }
+// Five-day range for the Coca at San Sebastián (H1134), provisional, from the 6 to 14 Oct 2026 record:
+// it answers within hours to rain on the Coca valley (CCS and Sierrazul stations): +0.85 m after ~35 mm on 8 Oct,
+// +0.4 m after ~10-15 mm on 11 Oct; it then falls about 0.3 m on the first day and 0.05-0.1 m a day after, towards 2.3-2.5 m.
+// Driver: forecast rain at El Chaco (upper Coca valley), else the wettest upstream point.
+function riseFor34(r) { return r === null ? 0.3 : r < 5 ? 0.05 : r < 10 ? 0.2 : r < 20 ? 0.4 : r < 35 ? 0.7 : 1.0 }
+function outlook34(o) {
+  const g = o.gauge && Array.isArray(o.gauge.levels) ? o.gauge.levels.find(x => x.code === 'H1134') : null;
+  const L = g && isNum(g.now) ? g.now : o.n('h1134'); if (L === null) return null;
+  const c = g && isNum(g.ch24) ? g.ch24 : null, r3 = g && isNum(g.ch3) ? g.ch3 : null, rising = r3 !== null && r3 >= 0.05, pulse = c !== null && c >= 0.2 && !rising;
+  const days = o.get('rainDays'), by = {}; if (Array.isArray(days)) days.forEach(d => { if (d && d.date) by[d.date] = d });
+  const rows = []; let lo = L, base = L, mb = L;
+  for (let k = 0; k <= 5; k++) {
+    const date = addDays(o.date, k), d = by[date], pt = d && d.pts && isNum(d.pts.elChaco) ? d.pts.elChaco : null;
+    const r = pt !== null ? pt : d && isNum(d.up) ? d.up : null;
+    let fall = k === 0 ? (pulse ? 0.5 * c : rising ? 0 : 0.1) : (k === 1 && (pulse || rising) ? 0.25 : 0.08);
+    fall *= Math.min(1.2, Math.max(0.2, (lo - 2.2) / 0.4));
+    lo -= fall;
+    base -= k === 0 ? (pulse ? 0.25 * c : 0) : 0.05;
+    let rise = riseFor34(r); if (k === 0 && rising) rise = Math.max(rise, r3 >= 0.15 ? 0.6 : 0.3);
+    const hi = Math.max(base + rise, lo + 0.25);
+    base = hi - 0.8 * rise;
+    const mr = r === null ? 0.05 : r < 5 ? 0 : 0.5 * riseFor34(r);
+    mb -= 0.6 * fall;
+    let mid = Math.min(hi, Math.max(lo, mb + mr)); if (k === 0 && rising) mid = Math.max(mid, Math.min(hi, L + 0.1));
+    mb = mid - 0.8 * mr;
+    rows.push({ date, lo: Math.round(lo * 100) / 100, hi: Math.round(hi * 100) / 100, mid: Math.round(mid * 100) / 100, rain: r === null ? null : Math.round(r) });
+  }
+  return rows;
+}
+// Stairs station at Yarina (17 km below Coca): wooden ladder, read as steps clear of the water (fraction = gap from the
+// lowest dry step to the water, as part of one step). Provisional fit to 10 dated photos, 8 to 14 Oct 2026 (RMS error 0.4 step):
+// steps = 40.84 - 5.79 x (H1135 + 0.4 x H1134), both read 3 h earlier (travel time to Yarina). About 5.8 steps per metre at Coca.
+const STAIRS = { a: 40.84, b: 5.79, w: 0.4, lagH: 3, max: 8, photos: [['2026-10-08T11:38', 5.4], ['2026-10-08T16:34', 5.0], ['2026-10-10T08:29', 4.5], ['2026-10-10T13:09', 5.3], ['2026-10-10T14:52', 5.55], ['2026-10-10T16:18', 5.45], ['2026-10-12T16:18', 4.6], ['2026-10-13T08:02', 6.2], ['2026-10-13T17:11', 6.9], ['2026-10-14T06:23', 7.3]],
+  bands: [[0, 2, 4, 'stairs nearly under'], [2, 4, 3, 'high water'], [4, 6.5, 1, 'normal'], [6.5, 99, 2, 'low water, mud bank']] };
+function stairsOf(h35, h34) { if (!isNum(h35) || !isNum(h34)) return null; return STAIRS.a - STAIRS.b * (h35 + STAIRS.w * h34) }
+function stairsBand(v) { return STAIRS.bands.find(b => v >= b[0] && v < b[1]) || STAIRS.bands[0] }
+function stairsWord(v) { return v === null ? '–' : v <= 0 ? 'all steps under water' : v >= STAIRS.max ? 'water below the ladder (' + STAIRS.max + '+ steps clear)' : fmt(v, 1) + ' steps clear' }
+// hourly stairs series from the gauge history (times local, as UTC ms): value at t uses the readings at t - 3 h
+function stairsSeries(hist) {
+  const a = (hist && hist.lvl) || [], b = new Map((hist && hist.lvl34) || []), out = [];
+  a.forEach(([t, v]) => { const w = b.get(t); if (isNum(w)) out.push([t + STAIRS.lagH * 36e5, stairsOf(v, w)]) });
+  return out;
+}
+function stairsNow(o) {
+  const g = o.gauge && Array.isArray(o.gauge.levels) ? o.gauge.levels : [], a = g.find(x => x.code === 'H1135'), b = g.find(x => x.code === 'H1134');
+  const h35 = a && isNum(a.now) ? a.now : o.n('riverLevel'), h34 = b && isNum(b.now) ? b.now : o.n('h1134'), at = (a && a.at) || o.s('riverTime');
+  let v = stairsOf(h35, h34); if (v === null) return null;
+  if (typeof gaugeHist === 'function' && /^\d\d:\d\d$/.test(at || '')) v += stairsOff(stairsAnchor(gaugeHist()), Date.parse(o.date + 'T' + at + ':00Z') + STAIRS.lagH * 36e5);
+  const vt = /^\d\d:\d\d$/.test(at || '') ? String((Number(at.slice(0, 2)) + STAIRS.lagH) % 24).padStart(2, '0') + at.slice(2) : '';
+  return { v, at, vt };
+}
+// steps clear written with quarters: 5.25 -> "5¼", 6 -> "6"; other values with two decimals
+function fmtQ(v) { if (!isNum(v)) return '–'; const q = Math.round(v * 4); if (Math.abs(v * 4 - q) > 1e-6) return fmt(v, 2); const w = Math.floor(q / 4), r = q - 4 * w; return String(w) + ['', '¼', '½', '¾'][r] }
+// stairs readings entered on the page, stored per day in man.stairsReadings = [{ tm: 'HH:MM', v: steps }]
+function stairsReadingsOf(doc) { const a = doc && doc.man && Array.isArray(doc.man.stairsReadings) ? doc.man.stairsReadings : []; return a.filter(r => r && isNum(r.v) && /^\d\d:\d\d$/.test(r.tm || '')) }
+// observed stairs readings: calibration photos plus readings entered on the page (and the older single "Observed" reading), oldest first
+function stairsObsList() {
+  const out = STAIRS.photos.map(([ts, v]) => ({ t: Date.parse(ts + ':00Z'), v, src: 'photo' }));
+  if (typeof st !== 'undefined' && st.docs) st.docs.forEach((doc, d) => {
+    const m = (doc && doc.man) || {}, loc = d === st.date ? st.local || {} : {}; const v = 'stairsObs' in loc ? loc.stairsObs : m.stairsObs, tm = ('stairsObsTime' in loc ? loc.stairsObsTime : m.stairsObsTime) || '07:00'; if (isNum(v) && /^\d\d:\d\d$/.test(tm)) out.push({ t: Date.parse(d + 'T' + tm + ':00Z'), v, src: 'reading', date: d, tm, legacy: true });
+    stairsReadingsOf(doc).forEach(r => out.push({ t: Date.parse(d + 'T' + r.tm + ':00Z'), v: r.v, src: 'reading', date: d, tm: r.tm }));
+  });
+  return out.sort((a, b) => a.t - b.t);
+}
+// model value (fit to H1135 and H1134, 3 h earlier) at a local time, from the hourly station history; null when no reading within 2 h
+function stairsModelAt(hist, t) { const near = stairsSeries(hist).filter(p => Math.abs(p[0] - t) <= 2 * 36e5).sort((a, b) => Math.abs(a[0] - t) - Math.abs(b[0] - t))[0]; return near ? near[1] : null }
+// correction from the latest observed reading: observed minus model at that time, fading to nothing over 72 h
+function stairsAnchor(hist) {
+  const obs = stairsObsList(), ser = stairsSeries(hist); if (!obs.length || !ser.length) return null;
+  const last = obs[obs.length - 1], near = ser.filter(p => Math.abs(p[0] - last.t) <= 2 * 36e5).sort((a, b) => Math.abs(a[0] - last.t) - Math.abs(b[0] - last.t))[0];
+  if (!near) return null;
+  return { t: last.t, v: last.v, off: last.v - near[1], src: last.src, at: (t => Math.max(0, 1 - (t - last.t) / (72 * 36e5)))(0) };
+}
+function stairsOff(an, t) { if (!an) return 0; const f = Math.max(0, Math.min(1, 1 - (t - an.t) / (72 * 36e5))); return an.off * f }
+function stairsFc(o) {
+  if (!o.o5 || !o.o34) return null;
+  const an = typeof gaugeHist === 'function' ? stairsAnchor(gaugeHist()) : null;
+  return o.o5.slice(1).map(r => { const q = o.o34.find(x => x.date === r.date); if (!q) return null; const c = stairsOff(an, Date.parse(r.date + 'T17:00:00Z')); return { date: r.date, mid: stairsOf(r.mid, q.mid) + c, lo: stairsOf(r.hi, q.hi) + c, hi: stairsOf(r.lo, q.lo) + c, corr: c } }).filter(Boolean);
+}
+function stairsChart(o, hist) {
+  const LT = (d, hm) => Date.parse(d + 'T' + (hm || '17:00') + ':00Z'), DAY = 864e5;
+  const W = Math.max(300, Math.min(760, (typeof document !== 'undefined' && document.getElementById('o5chart') || {}).clientWidth || 600));
+  const narrow = W < 520, m = { l: 40, r: narrow ? 58 : 72, t: 22 }, PH = 130, H = m.t + PH + 26;
+  const pw = W - m.l - m.r, xs = LT(addDays(o.date, -5), '05:00'), xe = LT(addDays(o.date, 6), '05:00'), X = t => m.l + pw * (t - xs) / (xe - xs);
+  const cl = v => Math.max(0, Math.min(STAIRS.max, v)), Y = v => m.t + PH * cl(v) / STAIRS.max; // flipped: fewer steps clear (higher water) plots higher, like a water level
+  const path = a => a.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+  const txt = (x, y, t, st, anc) => '<text x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '"' + (anc ? ' text-anchor="' + anc + '"' : '') + (st ? ' style="' + st + '"' : '') + '>' + t + '</text>';
+  const halo = 'paint-order:stroke;stroke:var(--card);stroke-width:4px;stroke-linejoin:round;';
+  const COL = { 1: 'var(--ok-bg)', 2: 'var(--warn-bg)', 3: 'var(--hi-bg)', 4: 'var(--bad-bg)' };
+  let g = '';
+  STAIRS.bands.forEach(b => { const y1 = Y(b[0]), y0 = Y(Math.min(b[1], STAIRS.max)); g += '<rect x="' + m.l + '" y="' + y1.toFixed(1) + '" width="' + pw + '" height="' + (y0 - y1).toFixed(1) + '" fill="' + COL[b[2]] + '" opacity=".55"/>' + (narrow ? '' : txt(m.l + 4, y1 + 12, b[3], 'fill:var(--muted);font-size:10.5px;' + halo)) });
+  for (let v = 0; v <= STAIRS.max; v += 2) g += '<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + Y(v) + '" y2="' + Y(v) + '" stroke="var(--line)"/>' + txt(m.l - 6, Y(v) + 4, String(v), '', 'end');
+  for (let k = -5; k <= 5; k++) { const d = addDays(o.date, k); if (k > -5) g += '<line x1="' + X(LT(d, '05:00')) + '" x2="' + X(LT(d, '05:00')) + '" y1="' + m.t + '" y2="' + (m.t + PH) + '" stroke="var(--line)"/>'; g += txt(X(LT(d)), H - 8, narrow ? String(Number(d.slice(8))) : k === 0 ? 'Today' : dateFmt(d, { weekday: 'short', day: 'numeric' }), k === 0 ? 'fill:var(--ink);font-weight:600' : '', 'middle') }
+  const ser = stairsSeries(hist).filter(p => p[0] >= xs && p[0] <= xe), now = stairsNow(o), fc = stairsFc(o);
+  const nowT = ser.length ? ser[ser.length - 1][0] : LT(o.date, '08:00');
+  g += '<line x1="' + X(nowT) + '" x2="' + X(nowT) + '" y1="' + m.t + '" y2="' + (m.t + PH) + '" stroke="var(--ink2)"/>';
+  if (fc && fc.length) {
+    const start = ser.length ? ser[ser.length - 1][1] : now ? now.v : fc[0].mid, pts = [[nowT, start, start, start]].concat(fc.map(r => [LT(r.date), r.lo, r.hi, r.mid]));
+    const hP = pts.map(r => [X(r[0]), Y(r[2])]), lP = pts.map(r => [X(r[0]), Y(r[1])]), mP = pts.map(r => [X(r[0]), Y(r[3])]);
+    g += '<path d="' + path(hP) + ' ' + path(lP.slice().reverse()).replace('M', 'L') + ' Z" fill="var(--accent)" opacity=".16"/><path d="' + path(mP) + '" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>';
+    mP.slice(1).forEach(q => { g += '<circle cx="' + q[0].toFixed(1) + '" cy="' + q[1].toFixed(1) + '" r="3" fill="var(--accent)"/>' });
+    const last = pts[pts.length - 1]; g += txt(W - m.r + 6, Y(last[3]) + 4, 'Likely ' + fmt(cl(last[3]), 1), 'fill:var(--ink);font-weight:600;font-size:11px');
+  }
+  if (ser.length > 1) { let segs = [[]]; ser.forEach((p, i) => { if (i && p[0] - ser[i - 1][0] > 3 * 36e5) segs.push([]); segs[segs.length - 1].push([X(p[0]), Y(p[1])]) }); segs.filter(q => q.length > 1).forEach(q => { g += '<path d="' + path(q) + '" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linejoin="round"/>' }) }
+  // calibration photos
+  stairsObsList().forEach(({ t, v, src }) => { if (t < xs || t > xe) return; const ts = new Date(t).toISOString(); g += '<g><rect x="' + (X(t) - 4).toFixed(1) + '" y="' + (Y(v) - 4).toFixed(1) + '" width="8" height="8" transform="rotate(45 ' + X(t).toFixed(1) + ' ' + Y(v).toFixed(1) + ')" fill="' + (src === 'photo' ? 'var(--card)' : 'var(--ink)') + '" stroke="var(--ink)" stroke-width="1.5"/><title>' + esc((src === 'photo' ? 'Photo ' : 'Reading ') + dateFmt(ts.slice(0, 10), { month: 'short', day: 'numeric' }) + ' ' + ts.slice(11, 16) + '\n' + fmtQ(v) + ' steps clear') + '</title></g>' });
+  // current value, labelled like the river panels
+  { const cv = now ? now.v : ser.length ? ser[ser.length - 1][1] : null; if (cv !== null) g += '<circle cx="' + X(nowT).toFixed(1) + '" cy="' + Y(cv).toFixed(1) + '" r="4.5" fill="var(--ink)" stroke="var(--card)" stroke-width="2"/>' + txt(X(nowT) - 8, Y(cv) - 8, stairsWord(cv).replace(' clear', ''), 'fill:var(--ink);font-size:11px;font-weight:600;' + halo, 'end') }
+  // tap a day
+  for (let k = -5; k <= 5; k++) {
+    const d = addDays(o.date, k), a = LT(d, '05:00'), dl = ser.filter(p => p[0] >= a && p[0] < a + DAY).map(p => cl(p[1])), r = fc ? fc.find(x => x.date === d) : null, parts = [dateFmt(d, { weekday: 'short', month: 'short', day: 'numeric' }) + ' 05:00 to ' + dateFmt(addDays(d, 1), { weekday: 'short' }) + ' 05:00'];
+    if (dl.length) parts.push('estimated ' + fmt(Math.min(...dl), 1) + '–' + fmt(Math.max(...dl), 1) + ' steps clear');
+    if (r) parts.push('likely ' + fmt(cl(r.mid), 1) + ' steps clear (range ' + fmt(cl(r.lo), 1) + '–' + fmt(cl(r.hi), 1) + ')');
+    if (parts.length > 1) g += '<rect class="hit" x="' + X(a) + '" y="' + m.t + '" width="' + (X(a + DAY) - X(a)) + '" height="' + PH + '" fill="transparent"><title>' + esc(parts.join('\n')) + '</title></rect>';
+  }
+  g += txt(m.l, 12, narrow ? 'Stairs station, Yarina: steps clear (higher = more water)' : 'Stairs station, Yarina: steps clear of the water, scale flipped so the line rises with the water (◇ your photos)', 'fill:var(--ink2);font-size:11px');
+  const head = now ? '<p class="stairsnow"><b>🪜 Stairs station: ' + esc(stairsWord(now.v)) + '</b> <span class="tiny">' + esc(stairsBand(cl(now.v))[3]) + (now.vt ? ' · around ' + now.vt + ', from the ' + now.at + ' readings' : '') + '</span></p>' : '';
+  const an = stairsAnchor(hist), tb = fc && fc.length ? '<div class="tablewrap"><table><thead><tr><th>Stairs station, day 05:00 to 05:00</th><th class="r">Likely steps clear</th><th class="r">Range</th><th>Level</th></tr></thead><tbody>' + fc.map(r => '<tr><td>' + dateFmt(r.date, { weekday: 'short', month: 'short', day: 'numeric' }) + '</td><td class="r"><b>' + fmt(cl(r.mid), 1) + '</b></td><td class="r">' + fmt(cl(r.lo), 1) + '–' + fmt(cl(r.hi), 1) + '</td><td>' + esc(stairsBand(cl(r.mid))[3]) + '</td></tr>').join('') + '</tbody></table></div>' + (an && Math.abs(an.off) >= 0.05 ? '<p class="tiny">Adjusted by ' + sgn(an.off, 1) + ' step from your ' + (an.src === 'photo' ? 'photo' : 'reading') + ' of ' + dateFmt(new Date(an.t).toISOString().slice(0, 10), { month: 'short', day: 'numeric' }) + ' ' + new Date(an.t).toISOString().slice(11, 16) + ' (' + fmt(an.v, 1) + ' steps), fading out over 3 days.</p>' : '') : '';
+  return head + '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="Stairs station at Yarina: steps clear of the water, estimated for the past 5 days and forecast for the next 5">' + g + '</svg>' + tb;
+}
 // hist: { lvl: [[ms, m]...] hourly H1135 level, rain: { 'YYYY-MM-DD': mm } H1135 rain per 05:00-to-05:00 window, keyed by its start date }; times are Ecuador local written as UTC ms
 function o5Chart(o, sd, hist) {
   const rows = o.o5, now = o.n('riverLevel'), LT = (d, hm) => Date.parse(d + 'T' + (hm || '17:00') + ':00Z'), DAY = 864e5;
@@ -595,7 +773,7 @@ function o5Chart(o, sd, hist) {
   const narrow = W < 520, m = { l: 40, r: narrow ? 58 : 72, t: 16 }, LH = 170, GAP = 30, RH = 60;
   const pw = W - m.l - m.r, xs = LT(addDays(o.date, -5), '05:00'), xe = LT(addDays(o.date, 6), '05:00');
   // Coca at San Sebastián (H1134): its own panel and scale under the Napo, since it runs about 2.5 m lower
-  const o34 = ((hist && hist.lvl34) || []).filter(p => p[0] >= xs && p[0] <= xe), SH = o34.length > 1 ? 58 : 0, S0 = m.t + LH + GAP, H = m.t + LH + GAP + (SH ? SH + GAP : 0) + RH + GAP + RH + 26;
+  const o34 = ((hist && hist.lvl34) || []).filter(p => p[0] >= xs && p[0] <= xe), f34 = o.o34, SH = o34.length > 1 || f34 ? 84 : 0, S0 = m.t + LH + GAP, H = m.t + LH + GAP + (SH ? SH + GAP : 0) + RH + GAP + RH + 26;
   const X = t => m.l + pw * (t - xs) / (xe - xs);
   const rt = o.s('riverTime'), nowT = isNum(now) && /^\d\d:\d\d$/.test(rt) ? LT(o.date, rt) : LT(o.date, '05:00');
   const obs = ((hist && hist.lvl) || []).filter(p => p[0] >= xs && p[0] <= nowT + 36e5);
@@ -651,15 +829,28 @@ function o5Chart(o, sd, hist) {
     }
   }
   g += pm;
-  if (isNum(now)) g += '<circle cx="' + xn + '" cy="' + Y(now) + '" r="5" fill="var(--accent)" stroke="var(--card)" stroke-width="2"/>';
+  if (isNum(now)) g += '<circle cx="' + xn + '" cy="' + Y(now) + '" r="5" fill="var(--accent)" stroke="var(--card)" stroke-width="2"/>' + txt(xn - 8, Y(now) - 8, fmt(now, 2) + ' m', 'fill:var(--ink);font-size:11px;font-weight:600;' + halo, 'end');
   if (SH) {
-    const v = o34.map(p => p[1]); let a0 = Math.floor(Math.min(...v) * 4) / 4, a1 = Math.ceil(Math.max(...v) * 4) / 4; if (a1 - a0 < 0.5) { const c = (a0 + a1) / 2; a0 = Math.floor((c - 0.25) * 4) / 4; a1 = a0 + 0.5 }
+    const lp = o34.length ? o34[o34.length - 1] : null, n34 = f34 ? (lp && Math.abs(lp[1] - f34[0].mid) < 0.6 ? [lp[0], lp[1]] : [nowT, f34[0].mid]) : null;
+    const fp = f34 ? [[n34[0], n34[1], n34[1], n34[1]]].concat(f34.slice(1).map(r => [LT(r.date), r.lo, r.hi, r.mid])) : [];
+    const v = o34.map(p => p[1]).concat(fp.map(r => r[1]), fp.map(r => r[2]));
+    let a0 = Math.floor(Math.min(...v) * 4) / 4, a1 = Math.ceil(Math.max(...v) * 4) / 4; if (a1 - a0 < 0.5) { const c = (a0 + a1) / 2; a0 = Math.floor((c - 0.25) * 4) / 4; a1 = a0 + 0.5 }
     const SY = x => S0 + SH * (1 - (x - a0) / (a1 - a0)), step = a1 - a0 > 1 ? 0.5 : 0.25;
     for (let x = a0; x <= a1 + 1e-9; x += step) g += '<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + SY(x).toFixed(1) + '" y2="' + SY(x).toFixed(1) + '" stroke="var(--line)"/>' + txt(m.l - 6, SY(x) + 4, x.toFixed(2), 'font-size:11px', 'end');
+    if (fp.length > 1) {
+      const hP = fp.map(r => [X(r[0]), SY(r[2])]), lP = fp.map(r => [X(r[0]), SY(r[1])]), mP = fp.map(r => [X(r[0]), SY(r[3])]);
+      g += '<path d="' + path(hP) + ' ' + path(lP.slice().reverse()).replace('M', 'L') + ' Z" fill="var(--accent)" opacity=".14"/>';
+      g += '<path d="' + path(hP) + '" fill="none" stroke="var(--accent)" stroke-width="1" stroke-dasharray="4 3" opacity=".8"/><path d="' + path(lP) + '" fill="none" stroke="var(--accent)" stroke-width="1" stroke-dasharray="4 3" opacity=".8"/>';
+      g += '<path d="' + path(mP) + '" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>';
+      mP.slice(1).forEach(q => { g += '<circle cx="' + q[0].toFixed(1) + '" cy="' + q[1].toFixed(1) + '" r="2.6" fill="var(--accent)"/>' });
+      const last = fp[fp.length - 1], yl = [SY(last[2]), SY(last[3]), SY(last[1])];
+      if (yl[1] - yl[0] < 12) yl[0] = yl[1] - 12; if (yl[2] - yl[1] < 12) yl[2] = yl[1] + 12;
+      g += txt(W - m.r + 6, yl[0] + 4, 'High ' + fmt(last[2], 2), 'fill:var(--ink2);font-size:10.5px') + txt(W - m.r + 6, yl[1] + 4, 'Likely ' + fmt(last[3], 2), 'fill:var(--ink);font-size:11px;font-weight:600') + txt(W - m.r + 6, yl[2] + 4, 'Low ' + fmt(last[1], 2), 'fill:var(--ink2);font-size:10.5px');
+    }
     let segs = [[]]; o34.forEach((p, i) => { if (i && p[0] - o34[i - 1][0] > 3 * 36e5) segs.push([]); segs[segs.length - 1].push([X(p[0]), SY(p[1])]) });
     segs.filter(q => q.length > 1).forEach(q => { g += '<path d="' + path(q) + '" fill="none" stroke="var(--ink2)" stroke-width="1.8" stroke-linejoin="round"/>' });
-    const lp = o34[o34.length - 1]; g += '<circle cx="' + X(lp[0]).toFixed(1) + '" cy="' + SY(lp[1]).toFixed(1) + '" r="3.5" fill="var(--ink2)" stroke="var(--card)" stroke-width="1.5"/>' + txt(X(lp[0]) + 7, SY(lp[1]) + 4, fmt(lp[1], 2) + ' m', 'fill:var(--ink2);font-size:11px;font-weight:600;' + halo);
-    g += txt(m.l, S0 - 8, narrow ? 'Coca at San Sebastián (H1134), m, observed' : 'Observed, Coca at San Sebastián (H1134), m: river feeding the Napo above Coca', 'fill:var(--ink2);font-size:11px');
+    if (lp) g += '<circle cx="' + X(lp[0]).toFixed(1) + '" cy="' + SY(lp[1]).toFixed(1) + '" r="3.5" fill="var(--ink2)" stroke="var(--card)" stroke-width="1.5"/>' + txt(X(lp[0]) - 7, SY(lp[1]) - 7, fmt(lp[1], 2) + ' m', 'fill:var(--ink2);font-size:11px;font-weight:600;' + halo, 'end');
+    g += txt(m.l, S0 - 8, narrow ? 'Coca at San Sebastián (H1134), m' : 'Coca at San Sebastián (H1134), m: observed, then likely level with its range (provisional)', 'fill:var(--ink2);font-size:11px');
   }
   // rain per 05:00-to-05:00 window, Coca and upstream on one scale: observed up to today, forecast (dashed) after
   const rd = {}, ru = {}; (Array.isArray(o.get('rainDays')) ? o.get('rainDays') : []).forEach(d => { if (d && d.date) { if (isNum(d.coca)) rd[d.date] = d.coca; if (isNum(d.up)) ru[d.date] = d.up } });
@@ -689,11 +880,12 @@ function o5Chart(o, sd, hist) {
     if (dl.length) parts.push('observed ' + fmt(Math.min(...dl), 2) + '–' + fmt(Math.max(...dl), 2) + ' m');
     { const d34 = o34.filter(p => p[0] >= a && p[0] < a + DAY).map(p => p[1]); if (d34.length) parts.push('H1134 ' + fmt(Math.min(...d34), 2) + '–' + fmt(Math.max(...d34), 2) + ' m') }
     if (k > 0 && r) parts.push('likely ' + fmt(r.mid, 1) + ' m (range ' + fmt(r.lo, 1) + '–' + fmt(r.hi, 1) + ')');
+    { const q = k > 0 && f34 ? f34.find(x => x.date === d) : null; if (q) parts.push('H1134 likely ' + fmt(q.mid, 2) + ' m (range ' + fmt(q.lo, 2) + '–' + fmt(q.hi, 2) + ')') }
     if (k <= 0) for (let L = 1; L <= 4; L++) { const F = fcs.find(f => f.date === addDays(d, -L)), q = F && Array.isArray(F.rows) ? F.rows.find(x => x.date === d) : null; if (q && isNum(q.mid)) parts.push((24 * L) + ' h forecast ' + fmt(q.mid, 1) + ' m') }
     if (k === 0 && isNum(now)) parts.push(fmt(now, 2) + ' m at ' + (o.s('riverTime') || '–'));
     if (b.v !== null) parts.push((b.f ? 'forecast rain ' : 'rain at H1135 ') + fmt(b.v) + ' mm');
     { const u = ubars[k + 5], by = k <= 0 && hist && hist.upRain && hist.upRain[d] ? hist.upRain[d].by : null; if (u.v !== null) parts.push((u.f ? 'forecast rain upstream ' : 'rain upstream ') + fmt(u.v) + ' mm' + (by ? ' (' + Object.keys(by).map(c => c + ' ' + fmt(by[c])).join(', ') + ')' : '')) }
-    g += '<rect class="hit" x="' + X(a) + '" y="' + m.t + '" width="' + (X(a + DAY) - X(a)) + '" height="' + (RB - m.t) + '" fill="transparent"><title>' + esc(parts.join(', ')) + '</title></rect>';
+    g += '<rect class="hit" x="' + X(a) + '" y="' + m.t + '" width="' + (X(a + DAY) - X(a)) + '" height="' + (RB - m.t) + '" fill="transparent"><title>' + esc(parts.join('\n')) + '</title></rect>';
   }
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="Napo at Coca: observed level for the past 5 days, then the most likely level for the next 5 days with a low-to-high margin, in metres; days run 05:00 to 05:00; observed level of the Coca at San Sebastián (H1134) and daily rain at Coca and upstream below. Values in the table below.">' + g + '</svg>';
 }
@@ -826,10 +1018,22 @@ function windDir(o) {
 }
 // cloud cover, percent of sky (mean over the block)
 function cloudWord(c) { return c < 20 ? 'clear' : c < 50 ? 'partly cloudy' : c < 85 ? 'mostly cloudy' : 'overcast' }
+// cloud cover is shown to the nearest 10% (the forecast is not finer than that)
+function r10(x) { return isNum(x) ? Math.round(x / 10) * 10 : x }
+// three rolling blocks, like the rain blocks: AM 06-12, PM 12-18, night 18-06; each its next occurrence (cloudBlockDates gives the date each block starts)
+function cloudBlocks(o) {
+  const bd = o.get('cloudBlockDates'), ok = bd && typeof bd === 'object';
+  return [['cloudAM', 'AM', '06–12', 6], ['cloudPM', 'PM', '12–18', 12], ['cloudNt', 'night', '18–06', 18]].map(([k, name, hrs, h0]) => {
+    const date = ok && /^\d{4}-\d\d-\d\d$/.test(bd[k] || '') ? bd[k] : o.date;
+    return { k, name, hrs, date, t: Date.parse(date + 'T00:00:00Z') + h0 * 36e5, v: r10(o.n(k)) };
+  }).sort((x, y) => x.t - y.t);
+}
+function cloudLabel(b, o) { return b.k === 'cloudNt' && b.date === o.date ? 'tonight' : b.name + (b.date !== o.date ? ' (' + dateFmt(b.date, { weekday: 'short' }) + ')' : '') }
 function cloudInfo(o) {
-  const a = o.n('cloudAM'), p = o.n('cloudPM'); if (a === null && p === null) return null;
-  const m = a !== null && p !== null ? (a + p) / 2 : (a !== null ? a : p);
-  return { am: a, pm: p, mean: m, word: cloudWord(m) };
+  const a = r10(o.n('cloudAM')), p = r10(o.n('cloudPM')), nt = r10(o.n('cloudNt')), bl = cloudBlocks(o).filter(b => b.v !== null); if (!bl.length) return null;
+  // the word describes the daytime sky when there is one, else the night
+  const m = a !== null && p !== null ? (a + p) / 2 : a !== null ? a : p !== null ? p : nt;
+  return { am: a, pm: p, nt, mean: m, word: cloudWord(m), blocks: bl, text: (sep, o2) => bl.map(b => cloudLabel(b, o2) + ' ' + fmt(b.v, 0) + '%').join(sep) };
 }
 function windFrom(o) { const c = windDir(o); return !c ? '' : c === 'variable' ? 'variable in direction' : 'from the ' + (DIRW[c] || c) + (DIRW[c] ? ' (' + c + ')' : '') }
 function genWind(o) {
@@ -895,64 +1099,122 @@ function levelDetail(o) {
 }
 function levelLine(o) { const d = levelDetail(o); return [['Rain', 'rain'], ['Lightning', 'lightning'], ['Heat', 'heat'], ['River', 'river'], ['Wind', 'wind']].map(p => p[0] + ': ' + LV[o.levels[p[1]]] + (p[1] === 'wind' ? ' from ' + (d.wind.dir || 'direction not gathered') : '') + (d[p[1]].v ? ' (' + d[p[1]].v + (d[p[1]].b ? '; ' + d[p[1]].b : '') + ')' : '')).join(' | ') }
 
+// Brief layout calibrated on the team's own brief (14 Oct): glance block, then one section per hazard, emoji per line.
+const DOT = ['⚪', '🟢', '🟡', '🟠', '🔴'];
+const wbIdx = w => w < 25 ? 1 : w < 28 ? 2 : w < 31 ? 3 : 4, hxIdx = h => h < 30 ? 1 : h < 40 ? 2 : h < 46 ? 3 : 4;
+const SEP = '━━━━━━━━━━━━━━';
+function cF(c) { return fmt(c, 0) + '°C | ' + F(c) + '°F' }
+function rangeC(a, b) { return a === null || b === null ? null : Math.round(a) === Math.round(b) ? cF(a) : fmt(a, 0) + '–' + fmt(b, 0) + '°C | ' + F(a) + '–' + F(b) + '°F' }
+function riverMove(o) {
+  const now = o.n('riverLevel'); if (!o.o5 || now === null) return { word: o.s('riverTrend') ? cap(o.s('riverTrend')) : 'Unconfirmed', arrow: '' };
+  const d = o.o5[1].mid - now;
+  return d >= 0.5 ? { word: 'Rise', arrow: ' ↗️' } : d >= 0.1 ? { word: 'Slight rise', arrow: ' ↗️' } : d <= -0.5 ? { word: 'Fall', arrow: ' ↘️' } : d <= -0.1 ? { word: 'Slight fall', arrow: ' ↘️' } : { word: 'Steady', arrow: ' ➡️' };
+}
+function sentences(t) { return String(t || '').split(/\n+|(?<=[.!?])\s+(?=[A-Z0-9])/).map(x => x.trim()).filter(Boolean) }
+function rainIcon(x) { return /thunder|storm|lightning/i.test(x) ? '⛈️ ' : /overnight|night|evening/i.test(x) ? '🌙 ' : /downpour|heavy/i.test(x) ? '🌧️ ' : '🌦️ ' }
 function briefText(o, cfg) {
-  const L = [], tom = addDays(o.date, 1);
-  L.push(cfg.title, dateFmt(o.date, { weekday: 'long', month: 'long', day: 'numeric' }) + ' | Morning Brief', cfg.locations, '', 'TODAY’S FORECAST', '');
-  L.push('🌦️ Rain: ' + o.tx.txRain);
-  if (o.blocks.some(b => b.v !== null)) L.push('🌧️ Rain at Coca, next 24 h: ' + o.blocks.map(b => b.name + ' ' + b.hrs + (b.date !== o.date ? ' (' + dateFmt(b.date, { weekday: 'short', month: 'short', day: 'numeric' }) + ')' : '') + ' ' + (b.v !== null ? fmt(b.v) + ' mm' + (b.obs ? ' (observed)' : '') : '–')).join(' | ') + '.');
-  if (false) L.push('🌧️ Rain at Coca today: night 00–06 ' + (o.rainNt !== null ? fmt(o.rainNt) + ' mm' + (o.rainNtObs ? ' (observed)' : '') : '–') + ' | AM 06–12 ' + (o.n('rainAM') !== null ? fmt(o.n('rainAM')) + ' mm' : '–') + ' | PM 12–18 ' + (o.n('rainPM') !== null ? fmt(o.n('rainPM')) + ' mm' : '–') + ' | evening 18–24 ' + (o.n('rainEve') !== null ? fmt(o.n('rainEve')) + ' mm' : '–') + '.');
-  { const c = cloudInfo(o); if (c) L.push('☁️ Cloud cover: ' + [c.am !== null ? 'AM ' + fmt(c.am, 0) + '% (' + cloudWord(c.am) + ')' : '', c.pm !== null ? 'PM ' + fmt(c.pm, 0) + '% (' + cloudWord(c.pm) + ')' : ''].filter(Boolean).join(', ') + '.') }
-  L.push('', '⚡ Lightning: ' + o.tx.txLightning, '', '🌡️ Temperature: ' + o.tx.txTemp);
-  const h = o.heat;
+  const L = [], tom = addDays(o.date, 1), h = o.heat, ts = { none: 0, isolated: 1, scattered: 2, likely: 3 };
+  const tsD = o.s('tsDay'), tsN = o.s('tsNight'), tsMax = Math.max(ts[tsD] || 0, ts[tsN] || 0), dir = windDir(o);
+  const name = String(cfg.title || '').split('|')[0].trim() || 'NAPO BASIN';
+  const time = o.s('issueTime') || cfg.issueTime || '';
+  L.push('🌎 ' + name + ' | DAILY WEATHER BRIEF', '📅 ' + dateFmt(o.date, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) + (time ? ' | ' + time : ''), '📍 ' + String(cfg.locations || '').split(/\s*[–|•·]\s*/).filter(Boolean).join(' • '), '');
+  // at a glance
+  const hot = o.n('tmax') !== null && o.n('tmax') >= 31, humid = h && h.hx - o.n('tmax') >= 6;
+  const head = [hot ? 'Hot' : o.n('tmax') !== null && o.n('tmax') >= 27 ? 'Warm' : '', humid ? 'humid' : '', tsMax >= 1 ? (tsMax >= 3 ? 'thunderstorms likely' : tsMax === 2 ? 'scattered thunderstorms possible' : 'isolated thunderstorms possible') : (o.rainHi !== null && o.rainHi >= 5 ? 'showers possible' : 'mostly dry')].filter(Boolean).join(', ');
+  const wbL = h && isNum(h.wbSun) ? wbIdx(h.wbSun) : null, rm = riverMove(o), rl = o.n('riverLevel');
+  L.push('👀 TODAY AT A GLANCE', '', (tsMax >= 2 ? '🌤️⛈️ ' : tsMax === 1 ? '🌤️🌦️ ' : '🌤️ ') + cap(head),
+    '🌧️' + DOT[o.levels.rain] + ' RAIN: ' + LV[o.levels.rain].toUpperCase() + (o.rainLo !== null ? ' | ' + (o.rainHi - o.rainLo >= 1 ? fmt(o.rainLo, 0) + '–' + fmt(o.rainHi, 0) : fmt(o.rainHi, 0)) + ' mm' : ''),
+    '⚡' + DOT[o.levels.lightning] + ' LIGHTNING: ' + LV[o.levels.lightning].toUpperCase() + ' potential',
+    wbL ? '🔥' + DOT[wbL] + ' HEAT STRESS: ' + wbgtLevel(h.wbSun) + ' in full sun' : '🔥' + DOT[o.levels.heat] + ' HEAT: ' + LV[o.levels.heat].toUpperCase(),
+    '💨' + DOT[o.levels.wind] + ' WIND: ' + LV[o.levels.wind] + (dir ? ' | ' + dir : ''),
+    '🌊' + DOT[o.levels.river] + ' RIVER: ' + (rl !== null ? fmt(rl, 2) + ' m | ' : '') + rm.word + rm.arrow, '', SEP, '');
+  // general outlook vs yesterday
+  L.push('🔄 GENERAL OUTLOOK | VS. YESTERDAY', '');
+  const pd = typeof st !== 'undefined' && st.docs ? st.docs.get(addDays(o.date, -1)) : null, p = pd ? compute(addDays(o.date, -1), pd, null, null) : null;
+  if (p && p.tHi !== null && o.tHi !== null) {
+    const dt = o.tHi - p.tHi, pts = Math.max(ts[p.s('tsDay')] || 0, ts[p.s('tsNight')] || 0);
+    const temp = Math.abs(dt) < 1.5 ? 'similar temperatures' : dt > 0 ? 'warmer (about ' + fmt(Math.abs(dt), 0) + '°C higher)' : 'cooler (about ' + fmt(Math.abs(dt), 0) + '°C lower)';
+    const tsw = tsMax === pts ? 'similar thunderstorm potential' : tsMax > pts ? 'more thunderstorm potential' : 'less thunderstorm potential';
+    L.push('🌤️ Compared with yesterday: ' + temp + ', ' + tsw + (p.rainHi !== null && o.rainHi !== null ? ', and ' + (o.rainHi > p.rainHi * 1.5 + 2 ? 'more rain forecast' : o.rainHi < p.rainHi / 1.5 - 2 ? 'less rain forecast' : 'a similar amount of rain forecast') : '') + '.');
+  }
+  if (tsMax >= 1) L.push('⛈️ Convective activity possible' + (tsD === 'scattered' || tsD === 'likely' ? ' through the day, with increased potential during afternoon heating.' : tsN && (ts[tsN] || 0) > (ts[tsD] || 0) ? ', mainly overnight.' : '.'));
+  if (p) {
+    const fts = Math.max(ts[p.s('tsDay')] || 0, ts[p.s('tsNight')] || 0), obs = o.s('obsTs');
+    if (obs && fts >= 1) L.push('📍 Forecast vs. observations: yesterday ' + (fts >= 3 ? 'thunderstorms were likely' : fts === 2 ? 'scattered thunderstorms were forecast' : 'isolated thunderstorms were possible') + '; the Coca airport reported ' + (obs === 'none' ? 'none' : obs === 'nearby' ? 'thunderstorms nearby' : 'thunderstorms overhead') + '. Convective storms are highly localized and hard to place precisely; they can develop at any time.');
+  }
+  L.push('', SEP, '');
+  // temperature and clouds
+  L.push('🌡️ TEMPERATURE & CLOUDS');
+  const hr = Array.isArray(o.get('hourly')) ? o.get('hourly') : [], hl = x => Number(new Date(Date.parse(x.ts) - 5 * 36e5).toISOString().slice(11, 13));
+  const am = hr.filter(x => hl(x) >= 6 && hl(x) < 12 && isNum(x.T)).map(x => x.T), pm = hr.filter(x => hl(x) >= 12 && hl(x) < 18 && isNum(x.T)).map(x => x.T);
+  const mr = am.length ? rangeC(Math.min(o.n('tmin') !== null ? o.n('tmin') : 99, ...am), Math.max(...am)) : o.n('tmin') !== null ? 'from ' + cF(o.n('tmin')) : null;
+  if (mr) L.push('🌅 Morning: ' + mr);
+  const ar = o.tLo !== null ? rangeC(o.tLo, o.tHi) : pm.length ? rangeC(Math.min(...pm), Math.max(...pm)) : null;
+  if (ar) L.push('☀️ Afternoon: ' + ar);
+  { const c = cloudInfo(o); if (c) L.push('🌤️ Cloud cover: ' + c.text(' → ', o)) }
+  const pk = o.wb && o.wb.hours && o.wb.hours.length > 1 ? o.wb.hours.filter(x => x.sun >= o.wb.sun - 1) : null;
+  if (pk && pk.length) L.push('🕒 Peak heating: ' + pk[0].at + '–' + String(Number(pk[pk.length - 1].at.slice(0, 2)) + 1).padStart(2, '0') + ':00');
+  L.push('');
+  // rainfall
+  L.push('🌧️ RAINFALL', DOT[o.levels.rain] + ' ' + LV[o.levels.rain].toUpperCase() + (o.rainLo !== null ? ' | ' + (o.rainHi - o.rainLo >= 0.5 ? fmt(o.rainLo) + '–' + fmt(o.rainHi) : fmt(o.rainHi)) + ' mm / 24 h' : ''));
+  sentences(o.tx.txRain).forEach(x => L.push((hasEmoji(x) ? '' : rainIcon(x)) + x));
+  if (o.blocks.some(b => b.v !== null)) L.push('🕒 Next 24 h at Coca: ' + o.blocks.map(b => b.name + ' ' + (b.v !== null ? fmt(b.v) + ' mm' : '–') + (b.date !== o.date ? ' (' + dateFmt(b.date, { weekday: 'short' }) + ')' : '')).join(' | '));
+  if (o.n('rainUp') !== null) { const pts = o.get('rainUpPts') || {}, nm = { tena: 'Tena', jatunyacu: 'Jatunyacu', elChaco: 'El Chaco', loreto: 'Loreto' }, w = Object.keys(pts).filter(k => isNum(pts[k])).sort((a, b) => pts[b] - pts[a])[0]; L.push('🏔️ Upstream precipitation: ~' + fmt(o.n('rainUp')) + ' mm / 24 h' + (w ? ' (wettest point: ' + (nm[w] || w) + ')' : '')) }
+  { const g = o.gauge, rr = g && Array.isArray(g.rain) ? g.rain.filter(r => isNum(r.r24)) : [];
+    if (rr.length) { const c = rr.find(r => r.code === 'H1135'), up = rr.filter(r => r.code !== 'H1135').reduce((a, r) => !a || r.r24 > a.r24 ? r : a, null); L.push('📊 Observed 24 h rainfall: ' + [c ? 'Coca ' + fmt(c.r24) + ' mm' : '', up ? 'upstream max ' + fmt(up.r24) + ' mm (' + up.name + ')' : ''].filter(Boolean).join(' | ')) }
+    else L.push('📊 Observed 24 h rainfall: ' + (o.n('obsRain') !== null ? 'Coca ' + fmt(o.n('obsRain')) + ' mm' : 'Unavailable')) }
+  L.push('');
+  // lightning
+  L.push('⚡ LIGHTNING & THUNDERSTORMS', DOT[o.levels.lightning] + ' ' + LV[o.levels.lightning].toUpperCase() + ' POTENTIAL');
+  const tsw = x => x === 'likely' ? 'Thunderstorms likely' : x === 'scattered' ? 'Scattered thunderstorms possible' : x === 'isolated' ? 'Isolated thunderstorms possible' : x === 'none' ? 'Thunderstorms not expected' : null;
+  if (tsw(tsD)) L.push('☀️ Daytime: ' + tsw(tsD));
+  if (tsw(tsN)) L.push('🌙 Overnight: ' + tsw(tsN));
+  sentences(o.tx.txLightning).forEach(x => L.push((hasEmoji(x) ? '' : '⚡ ') + x));
+  if (tsMax >= 1) L.push('💨 Localized gusts and heavy rain associated with storm cells');
+  L.push('');
+  // heat
   if (h) {
-    const off = h.hx - o.n('tmax'), lo = (o.tLo !== null ? o.tLo : o.n('tmax')) + off, hi = Math.max(h.hx, (o.tHi !== null ? o.tHi : o.n('tmax')) + off);
-    L.push('', '🥵 HEAT / HUMIDITY', 'Humidex: Approximately ' + (hi - lo >= 1 ? fmt(lo, 0) + '–' + fmt(hi, 0) : fmt(hi, 0)) + ' during peak afternoon heat, based on forecast temperature and dew point near ' + cf(h.td, 0) + '. Hazard: ' + hxLevel(hi) + ' for strenuous physical activity.', '');
-    const wr = o.n('wbgt');
-    L.push(wr !== null ? 'WBGT: ' + cf(wr) + ', reported value. Heat-stress concern: ' + wbgtLevel(wr) + '.'
-      : 'WBGT: about ' + cf(h.wbSun, 0) + ' in full sun and ' + cf(h.wbShade, 0) + ' in shade' + (o.wb ? ', peak around ' + o.wb.at : '') + ', calculated with the Liljegren model from forecast temperature, humidity, pressure, wind and cloud cover' + (o.wb && o.wb.est ? ' (peak-heat values; hourly forecast not gathered)' : '') + '. Heat-stress concern in full sun: ' + wbgtLevel(h.wbSun) + '.');
-    L.push('', 'WBGT (Wet Bulb Globe Temperature) accounts for temperature, humidity, radiant heat and wind. It is more useful than Humidex for assessing occupational heat exposure. Actual risk depends on workload, acclimatization and sun exposure.');
+    L.push('🔥 HEAT & HUMIDITY');
+    if (isNum(h.wbSun)) L.push(DOT[wbIdx(h.wbSun)] + ' WBGT full sun: ' + fmt(h.wbSun, 0) + '°C | ' + wbgtLevel(h.wbSun), DOT[wbIdx(h.wbShade)] + ' WBGT shade: ' + fmt(h.wbShade, 0) + '°C | ' + wbgtLevel(h.wbShade));
+    L.push('🌡️ Wet-bulb temperature: ' + fmt(h.tw, 0) + '°C', '🥵 Humidex: ' + fmt(h.hx, 0) + ' | ' + hxLevel(h.hx));
+    if (pk && pk.length) L.push('🕛 Peak heat stress: ' + pk[0].at + '–' + String(Number(pk[pk.length - 1].at.slice(0, 2)) + 1).padStart(2, '0') + ':00'); else if (o.wb) L.push('🕛 Peak heat stress: around ' + o.wb.at);
+    L.push('');
   }
-  const rv = String(o.tx.txRiver || '').split(/\n\s*\n/);
-  L.push('', '🌊 NAPO RIVER', rv[0]);
-  const g = o.gauge;
-  if (g && Array.isArray(g.levels) && g.levels.length) {
-    L.push('', 'INAMHI stations, read ' + String(g.fetchedAt || '').slice(11, 16) + ':');
-    g.levels.forEach(s => L.push('• ' + s.name + ' (' + s.code + '): ' + fmt(s.now, 2) + ' m at ' + s.at + (isNum(s.ch24) ? ', ' + sgn(s.ch24) + ' m in 24 h' : '') + (isNum(s.ch3) ? ', ' + trendWord(s.ch3 / 3) : '') + '.'));
-    const rs = (Array.isArray(g.rain) ? g.rain : []).filter(r => RIVER_RAIN.indexOf(r.code) >= 0);
-    if (rs.length) {
-      L.push('• Rain, last 24 h: ' + rs.map(r => r.name + ' ' + fmt(r.r24) + ' mm').join(' | ') + '.');
-      const wet = rs.filter(r => isNum(r.r12) && r.r12 >= 1);
-      if (wet.length) L.push('• Rain, last 12 h: ' + wet.map(r => r.name + ' ' + fmt(r.r12) + ' mm').join(' | ') + '.');
-    }
+  // wind
+  L.push('💨 WIND', '🧭 ' + (dir ? dir + ' | ' : '') + (o.n('wind') !== null ? 'Approximately ' + fmt(o.n('wind'), 0) + ' km/h' : 'Speed not gathered'));
+  if (o.n('gust') !== null) L.push('💨 Gusts up to ' + fmt(o.n('gust'), 0) + ' km/h');
+  if (tsMax >= 1) L.push('⛈️ Stronger gusts possible with thunderstorms');
+  L.push('');
+  // river
+  L.push('🌊 NAPO RIVER CONDITIONS', DOT[o.levels.river] + ' ' + LV[o.levels.river].toUpperCase() + ' | ' + rm.word + rm.arrow, '');
+  L.push('📍 Current: ' + (rl !== null ? fmt(rl, 2) + ' m' + (o.s('riverTime') ? ' at ' + o.s('riverTime') : '') + (o.change !== null ? ' (' + sgn(o.change) + ' m in 24 h)' : '') : 'unconfirmed'));
+  L.push('🔽 Low-water threshold: ' + fmt(RIVER_LOW, 2) + ' m', '🔼 High-water threshold: ' + fmt(RIVER_HIGH, 2) + ' m');
+  if (o.o5) {
+    const nx = o.o5.slice(1, 4), pkr = nx.reduce((a, r) => r.mid > a.mid ? r : a, nx[0]), w = pkr.hi - pkr.lo;
+    L.push('📈 Forecast peak, next 3 days: ~' + fmt(pkr.mid, 2) + ' m (' + dateFmt(pkr.date, { weekday: 'short', month: 'short', day: 'numeric' }) + ', range ' + fmt(pkr.lo, 1) + '–' + fmt(pkr.hi, 1) + ' m)');
+    L.push('🎯 Forecast confidence: ' + (w < 0.8 ? 'HIGH' : w < 1.5 ? 'MODERATE' : 'LOW'));
   }
-  rv.slice(1).forEach(x => { if (x.trim()) L.push('', x.trim()) });
-  L.push('', '💨 Wind: ' + o.tx.txWind);
-  const ot = String(o.tx.txOutlook || '');
-  L.push('', 'OPERATIONAL OUTLOOK', '', hasEmoji(ot) ? ot : '⚠️ ' + ot, '');
-  const rows = o.models.filter(r => r.label && (r.tmax !== null || r.rain !== null || r.note));
-  if (rows.length) {
-    L.push('MODEL COMPARISON', '');
-    rows.forEach(r => { L.push((MLABEL[r.label] || r.label) + ': ' + [r.tmax !== null ? cf(r.tmax, 0) + '.' : '', r.rain !== null ? fmt(r.rain) + ' mm (' + INCH(r.rain) + ' in) in 24 h.' : '', r.note ? sent(r.note) : ''].filter(Boolean).join(' '), '') });
-    if (o.tx.txModels) L.push('Consensus: ' + o.tx.txModels, '');
-  }
-  L.push('TOMORROW | ' + dateFmt(tom, { weekday: 'long' }).toUpperCase() + ' ' + Number(tom.slice(8)), '', o.tx.txTomorrow);
+  { const g = o.gauge, up = g && Array.isArray(g.levels) ? g.levels.filter(s => s.code !== 'H1135') : []; if (up.length) L.push('🏞️ Upstream gauges: ' + up.map(s => s.name.replace(/ AJ Coca| DJ Oyacachi|Coca at /g, '') + ' ' + fmt(s.now, 2) + ' m' + (isNum(s.ch24) ? ' (' + sgn(s.ch24) + ')' : '')).join(' | ')) }
+  { const sn = stairsNow(o), sf = stairsFc(o); if (sn) L.push('🪜 Stairs station (Yarina): ' + stairsWord(sn.v) + (sn.vt ? ' around ' + sn.vt : '') + ' (' + stairsBand(Math.max(0, Math.min(STAIRS.max, sn.v)))[3] + ')' + (sf && sf[0] ? ' | tomorrow likely ' + stairsWord(Math.max(0, Math.min(STAIRS.max, sf[0].mid))) : '') + ' (estimate)') }
+  // operational outlook (editable wording)
+  { const ol = String(o.tx.txOutlook || '').split('\n').map(x => x.trim()).filter(Boolean); if (ol.length) { L.push('', SEP, '', '🧭 OPERATIONAL OUTLOOK', ''); ol.forEach(x => L.push(hasEmoji(x) ? x : '⚠️ ' + x)) } }
+  // advisory
+  L.push('', SEP, '');
   const adv = cfg.advisory !== false, act = adv && o.get('advActive') === true;
-  if (adv || o.tx.txWarning) L.push('', '⚠️ WEATHER WARNING ADVISORY', '');
   if (act) {
-    const src = o.s('advSource'), iss = src ? src.split(/,|\s+as reported|\s+\(/)[0].trim() : (o.s('advTitle') || 'Official advisory');
-    L.push(iss + (o.s('advPeriod') ? ' | ' + o.s('advPeriod') : '') + '.');
-    const ICON = [[/amazon|orellana/i, '🌧️ '], [/^peak/i, '⛈️ '], [/hazard/i, '⚡ ']];
-    o.s('advText').split('\n').map(x => x.trim()).filter(Boolean).forEach(x => { const ic = hasEmoji(x) ? null : ICON.find(p => p[0].test(x)); L.push('', (ic ? ic[1] : '') + x) });
-  } else {
-    if (o.tx.txWarning) L.push('⚠️ ' + o.tx.txWarning, '');
-    if (adv) L.push((o.get('advChecked') === true || o.get('advActive') === false) ? 'No official weather advisory in force for Orellana identified at time of issue.' : 'Official advisories not checked.');
+    const src = o.s('advSource'), iss = src ? src.split(/,|\s+as reported|\s+\(/)[0].trim() : 'INAMHI';
+    L.push('⚠️ OFFICIAL WEATHER ADVISORY | ' + iss.toUpperCase(), '');
+    if (o.s('advPeriod')) L.push('🗓️ Valid ' + o.s('advPeriod'));
+    const ICON = [[/thunder|storm|lightning/i, '⛈️ '], [/heavy|rain/i, '🌧️ '], [/wind|gust/i, '💨 '], [/river|flood/i, '🌊 ']];
+    o.s('advText').split('\n').map(x => x.trim()).filter(Boolean).forEach(x => { const ic = hasEmoji(x) ? null : ICON.find(q => q[0].test(x)); L.push((ic ? ic[1] : '⚠️ ') + x) });
+  } else if (adv) {
+    L.push('⚠️ OFFICIAL WEATHER ADVISORY', '', (o.get('advChecked') === true || o.get('advActive') === false) ? '✅ No official weather advisory in force for Orellana identified at time of issue.' : '❔ Official advisories not checked.');
   }
-  const ob = [];
-  if (o.n('obsRain') !== null) ob.push('Rain at Coca: ' + fmt(o.n('obsRain')) + ' mm');
-  if (o.n('obsTmax') !== null) ob.push('Max temp: ' + cf(o.n('obsTmax')) + (o.obsHeat ? ' (humidex ' + fmt(o.obsHeat.hx, 0) + ')' : ''));
-  if (o.s('obsTs')) ob.push('Thunderstorms: ' + o.s('obsTs'));
-  if (ob.length || o.s('obsNote')) { L.push('', 'OBSERVED, LAST 24 H', ''); if (ob.length) L.push(ob.join(' | ')); if (o.s('obsNote')) L.push(o.s('obsNote')) }
-  if (o.s('notes')) L.push('', 'NOTES', '', o.s('notes'));
+  if (o.tx.txWarning) L.push('', '⚠️ ' + o.tx.txWarning);
+  // tomorrow and notes
+  if (o.tx.txTomorrow) L.push('', SEP, '', '🔮 TOMORROW | ' + dateFmt(tom, { weekday: 'long' }).toUpperCase() + ' ' + Number(tom.slice(8)), '', o.tx.txTomorrow);
+  if (o.s('notes')) L.push('', '📝 NOTES', o.s('notes'));
+  L.push('', SEP, '📡 Forecast based on available meteorological models and Napo Basin river-level information.');
   return L.join('\n');
 }
 function r1(x) { return isNum(x) ? Math.round(x * 10) / 10 : null }
@@ -960,7 +1222,7 @@ function record(o) {
   const h = o.heat || {}, oh = o.obsHeat || {};
   return {
     tmax: o.n('tmax'), tmin: o.n('tmin'), rh: o.n('rh'), dewPoint: r1(h.td), wetBulb: r1(h.tw), humidex: r1(h.hx), wbgtShade: r1(h.wbShade), wbgtSun: r1(h.wbSun), wbgtReported: o.n('wbgt'),
-    rainDay: o.n('rainDay'), rainNight: o.n('rainNight'), rainNt: o.rainNt, rainNtObserved: o.rainNtObs, rainAM: o.n('rainAM'), rainPM: o.n('rainPM'), rainEve: o.n('rainEve'), rainBlockDates: o.blocks.map(b => b.k.slice(4) + ':' + b.date.slice(5)).join(' '), cloudAM: o.n('cloudAM'), cloudPM: o.n('cloudPM'), rain24: r1(o.rain24), rainLo: r1(o.rainLo), rainHi: r1(o.rainHi), rainUp: o.n('rainUp'), rainTom: o.n('rainTom'),
+    rainDay: o.n('rainDay'), rainNight: o.n('rainNight'), rainNt: o.rainNt, rainNtObserved: o.rainNtObs, rainAM: o.n('rainAM'), rainPM: o.n('rainPM'), rainEve: o.n('rainEve'), rainBlockDates: o.blocks.map(b => b.k.slice(4) + ':' + b.date.slice(5)).join(' '), cloudAM: r10(o.n('cloudAM')), cloudPM: r10(o.n('cloudPM')), cloudNt: r10(o.n('cloudNt')), cloudBlockDates: cloudBlocks(o).map(b => b.k.slice(5) + ':' + b.date.slice(5)).join(' '), rain24: r1(o.rain24), rainLo: r1(o.rainLo), rainHi: r1(o.rainHi), rainUp: o.n('rainUp'), rainTom: o.n('rainTom'),
     tsDay: o.s('tsDay'), tsNight: o.s('tsNight'), wind: o.n('wind'), gust: o.n('gust'), windDir: windDir(o) || null,
     riverLevel: o.n('riverLevel'), riverTime: o.s('riverTime'), riverChange: o.change, riverTrend: o.s('riverTrend'), riverOutlook: o.outlook, o5: o.o5 ? o.o5.slice(1).map(r => ({ date: r.date, lo: r.lo, hi: r.hi, mid: r.mid })) : null, expMid: o.o5 ? o.o5[1].mid : null, expLo: o.o5 ? o.o5[1].lo : null, expHi: o.o5 ? o.o5[1].hi : null, h1134: o.n('h1134'), riverFlowPct: o.n('riverFlowPct'),
     obsRain: o.n('obsRain'), obsRainUp: o.n('obsRainUp'), obsTmax: o.n('obsTmax'), obsHumidex: r1(oh.hx), obsWetBulb: r1(oh.tw), obsTs: o.s('obsTs'),
@@ -1032,9 +1294,9 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&am
 const TS = [['', '—'], ['none', 'None'], ['isolated', 'Isolated'], ['scattered', 'Scattered'], ['likely', 'Likely']];
 const LVO = [['', 'Auto'], [1, 'Low'], [2, 'Moderate'], [3, 'High'], [4, 'Very high']];
 const GROUPS = [
-  { id: 'fx', title: 'Forecast today', hint: 'Coca and Yarina, today; rain for the next 24 h in 6-hour blocks', fields: [
+  { id: 'fx', title: 'Forecast today', hint: 'Coca and Yarina, today; rain and cloud for the next 24 h in blocks', fields: [
     ['tmax', 'Max temp', '°C', 'num'], ['tmin', 'Min temp', '°C', 'num'], ['rh', 'Humidity at peak heat', '%', 'num'],
-    ['rainNt', 'Rain, night 00–06', 'mm', 'num'], ['rainAM', 'Rain, AM 06–12', 'mm', 'num'], ['rainPM', 'Rain, PM 12–18', 'mm', 'num'], ['rainEve', 'Rain, evening 18–24', 'mm', 'num'], ['cloudAM', 'Cloud cover, AM 06–12', '%', 'num'], ['cloudPM', 'Cloud cover, PM 12–18', '%', 'num'], ['rainUp', 'Upstream rain, next 24 h', 'mm', 'num'],
+    ['rainNt', 'Rain, night 00–06', 'mm', 'num'], ['rainAM', 'Rain, AM 06–12', 'mm', 'num'], ['rainPM', 'Rain, PM 12–18', 'mm', 'num'], ['rainEve', 'Rain, evening 18–24', 'mm', 'num'], ['cloudAM', 'Cloud cover, AM 06–12', '%', 'num'], ['cloudPM', 'Cloud cover, PM 12–18', '%', 'num'], ['cloudNt', 'Cloud cover, night 18–06', '%', 'num'], ['rainUp', 'Upstream rain, next 24 h', 'mm', 'num'],
     ['tsDay', 'Thunderstorms, day', '', 'sel', TS], ['tsNight', 'Thunderstorms, night', '', 'sel', TS],
     ['wind', 'Wind, sustained', 'km/h', 'num'], ['windDir', 'Wind from', '', 'text', null, 'E'], ['gust', 'Gusts', 'km/h', 'num']], after: '<div class="tiles" id="tiles"></div>' },
   { id: 'river', title: 'Napo River', hint: '<a class="ext" href="https://inamhi.gob.ec/info/" target="_blank" rel="noopener">Open the INAMHI Visor ↗</a>', fields: [
@@ -1043,7 +1305,13 @@ const GROUPS = [
     ['h1134', 'Coca at San Sebastián, H1134', 'm', 'num'], ['obsRainUp', 'Upstream rain, last 24 h', 'mm', 'num'],
     ['riverOutlook', 'Outlook, next 24 h', '', 'sel', [['', 'Auto'], ['falling', 'Falling'], ['steady', 'Steady'], ['rise possible', 'Rise possible'], ['rise likely', 'Rise likely']]],
     ['riverFlowPct', 'Modelled flow, 24 h', '%', 'num']], after: '<div class="stations"><h3 class="sth">INAMHI stations</h3><div id="stations"></div></div>' },
-  { id: 'o5', title: 'River outlook, 5 days', hint: 'Napo at Coca town, provisional', custom: '<div id="o5chart" class="o5chart"></div><div id="o5"></div><div id="o5skill"></div>' },
+  { id: 'o5', title: 'River outlook, 5 days', hint: 'Napo at Coca town, provisional', custom: '<div id="o5chart" class="o5chart"></div><div id="o5"></div><div id="o5skill"></div><div id="stairsBox" class="o5chart"></div>' +
+    '<div class="stairsin" id="stairsIn"><h3 class="sth">🪜 Add a stairs reading</h3>' +
+    '<div class="fields"><label class="f"><span class="lab">Date of the reading</span><input type="date" id="sDate"></label><label class="f"><span class="lab">Time of the reading</span><input type="time" id="sTime"></label><label class="f"><span class="lab">Boards clear <i>whole</i></span><input type="number" id="sBoards" inputmode="numeric" min="0" max="12" step="1" placeholder="5" autocomplete="off"></label></div>' +
+    '<div class="qrow" role="group" aria-label="Gap from the lowest dry board to the water"><span class="ql">Gap to the water</span>' + [[0, '0'], [0.25, '¼'], [0.5, '½'], [0.75, '¾']].map(([q, t]) => '<button type="button" data-q="' + q + '" aria-pressed="' + (q === 0 ? 'true' : 'false') + '">' + t + '</button>').join('') + '</div>' +
+    '<p class="tiny">Boards clear: count the dry boards from the top frame. Gap: from the lowest dry board down to the water, as part of one step. Water right at a board: choose 0 and count that board as covered. Date and time fill in with now when the page opens and when you press Refresh; change them if the reading was taken earlier.</p>' +
+    '<div class="row"><button type="button" class="primary" id="sAdd">Add reading</button><span class="sprev" id="sPrev"></span><span class="msg" id="sMsg" role="status"></span></div>' +
+    '<div id="sList"></div></div>' },
   { id: 'models', title: 'Model comparison', hint: 'Max temp and 24 h rain per model', custom: '<div class="models" id="models"></div><div class="row"><button type="button" class="small" id="mAdd">Add model</button></div>' },
   { id: 'tom', title: 'Tomorrow', hint: '', fields: [['tmaxTom', 'Max temp', '°C', 'num'], ['rainTom', 'Rain, 24 h', 'mm', 'num'], ['tsTom', 'Thunderstorms', '', 'sel', TS]] },
   { id: 'adv', title: 'Official advisory', hint: '<a class="ext" href="https://www.inamhi.gob.ec/" target="_blank" rel="noopener">INAMHI ↗</a> · <a class="ext" href="https://www.gestionderiesgos.gob.ec/" target="_blank" rel="noopener">SNGR ↗</a>', custom:
@@ -1141,7 +1409,7 @@ function cur() {
   let lo = null;
   if (!(doc && doc.gauge && doc.gauge.vals && isNum(doc.gauge.vals.riverLevel)) && !(st.local && isNum(st.local.riverLevel)) && !(doc && doc.man && isNum(doc.man.riverLevel))) {
     lo = lastObsFor(d);
-    if (lo && (lo.date === d || Date.parse(d + 'T05:00:00Z') - lo.ms <= 36 * 36e5)) doc = Object.assign({}, doc || {}, { fb: { riverLevel: lo.v, riverTime: lo.date === d ? lo.hm : lo.label + ' (last reading)' } });
+    if (lo && (lo.date === d || Date.parse(d + 'T05:00:00Z') - lo.ms <= 36 * 36e5)) { const l34 = (gaugeHist().lvl34 || []).filter(p => p[0] <= lo.ms + 36e5).pop(); doc = Object.assign({}, doc || {}, { fb: { riverLevel: lo.v, riverTime: lo.date === d ? lo.hm : lo.label + ' (last reading)', h1134: l34 && lo.ms - l34[0] <= 6 * 36e5 ? l34[1] : undefined } }) }
     else lo = null;
   }
   const o = compute(d, doc, st.local, st.docs.get(addDays(d, -1))); o.lastObs = lo; return o;
@@ -1177,7 +1445,7 @@ async function flush() {
     if (st.docs.has(date) || st.created.has(date)) await ref.update({ man: batch, updatedTs: now });
     else { st.created.add(date); await ref.set({ date, status: 'draft', man: batch, createdTs: now, updatedTs: now }) }
     if (date === st.date) keys.forEach(k => { if (!(k in st.dirty) && JSON.stringify(st.local[k]) === JSON.stringify(batch[k])) delete st.local[k] });
-    saveState('Saved ' + ecNow().hm);
+    saveState((window.NAA_SHARED_ERR ? 'Saved on this device, sharing when the connection returns, ' : 'Saved and shared, ') + ecNow().hm);
   } catch (e) {
     keys.forEach(k => { if (!(k in st.dirty)) st.dirty[k] = batch[k] });
     if (e && e.code === 'invalid_argument') { st.ro = true; banner('You can view this record but not change it. Your edits stay on this screen only.') }
@@ -1211,6 +1479,52 @@ function gaugeHist() {
   const h = { upRain, lvl: [...lv.entries()].sort((a, b) => a[0] - b[0]), lvl34: [...l34.entries()].sort((a, b) => a[0] - b[0]), rain, rainH: rn };
   st.histCache = { n: st.gaugeDocs, h }; return h;
 }
+// ---------- stairs readings entered on the page ----------
+// stored per day (the photo's date) as man.stairsReadings; the whole list for that day is written at once
+function stairsVal() { const b = $('sBoards').value.trim(), pb = document.querySelector('#stairsIn [data-q][aria-pressed="true"]'), q = pb ? Number(pb.dataset.q) : 0; if (!/^\d{1,2}$/.test(b)) return null; const v = Number(b) + q; return v <= 12 ? v : null }
+function stairsPreview() { const v = stairsVal(), e = $('sPrev'); if (e) e.textContent = v === null ? '' : '= ' + fmtQ(v) + ' steps clear' }
+function stairsDefaults() { const n = ecNow(); $('sDate').value = n.date; $('sTime').value = n.hm; $('sBoards').value = ''; document.querySelectorAll('#stairsIn [data-q]').forEach(b => b.setAttribute('aria-pressed', b.dataset.q === '0' ? 'true' : 'false')); stairsPreview() }
+function stairsMsg(t, err) { const m = $('sMsg'); m.textContent = t; m.dataset.kind = err ? 'err' : '' }
+async function stairsWrite(date, list) {
+  const ref = st.db.doc('briefs/' + date), now = Date.now();
+  if (st.docs.has(date) || st.created.has(date)) await ref.update({ man: { stairsReadings: list }, updatedTs: now });
+  else { st.created.add(date); await ref.set({ date, status: 'draft', man: { stairsReadings: list }, createdTs: now, updatedTs: now }) }
+  // show it at once; the store's own update follows
+  const d = Object.assign({ date, status: 'draft' }, st.docs.get(date) || {}); d.man = Object.assign({}, d.man || {}, { stairsReadings: list }); st.docs.set(date, d);
+  st.histCache = null; refresh();
+}
+async function stairsAdd() {
+  const date = $('sDate').value, tm = ($('sTime').value || '').slice(0, 5), v = stairsVal();
+  if (!/^\d{4}-\d\d-\d\d$/.test(date)) return stairsMsg('Enter the date of the reading.', true);
+  if (!/^\d\d:\d\d$/.test(tm)) return stairsMsg('Enter the time of the reading.', true);
+  if (v === null) { $('sBoards').setAttribute('aria-invalid', 'true'); return stairsMsg('Enter the number of whole boards clear, 0 to 12.', true) }
+  $('sBoards').removeAttribute('aria-invalid');
+  const n = ecNow(); if (date + 'T' + tm > n.date + 'T' + n.hm && Date.parse(date + 'T' + tm + ':00Z') - Date.parse(n.date + 'T' + n.hm + ':00Z') > 15 * 6e4) return stairsMsg('That time is in the future. Use the time of the reading.', true);
+  if (!st.db || st.ro) return stairsMsg('Not saved: the record cannot be changed in this view.', true);
+  const list = stairsReadingsOf(st.docs.get(date)).filter(r => r.tm !== tm).concat([{ tm, v }]).sort((a, b) => a.tm < b.tm ? -1 : 1);
+  const b = $('sAdd'); b.disabled = true;
+  try { await stairsWrite(date, list); stairsMsg('Saved: ' + fmtQ(v) + ' steps clear, ' + dateFmt(date, { month: 'short', day: 'numeric' }) + ' ' + tm + '.'); stairsDefaults() }
+  catch (e) { stairsMsg('Not saved: ' + ((e && e.message) || 'store unavailable') + '. Try again.', true) }
+  finally { b.disabled = false }
+}
+// two taps: the first arms the button, the second deletes
+async function stairsDel(date, tm) {
+  if (!st.db || st.ro) return;
+  const key = date + '|' + tm; if (st.sArm !== key) { st.sArm = key; renderStairsList(); return } st.sArm = null;
+  try { await stairsWrite(date, stairsReadingsOf(st.docs.get(date)).filter(r => r.tm !== tm)); stairsMsg('Reading deleted.') } catch (e) { stairsMsg('Not deleted: ' + ((e && e.message) || 'store unavailable') + '.', true) }
+}
+// recent readings with the model value at that time, and the average misfit of the last 10 readings and photos
+function renderStairsList() {
+  const el = $('sList'); if (!el) return;
+  const hist = gaugeHist(), all = stairsObsList().map(r => Object.assign({}, r, { m: stairsModelAt(hist, r.t) }));
+  const scored = all.filter(r => r.m !== null).slice(-10), mae = scored.length ? scored.reduce((x, r) => x + Math.abs(r.v - r.m), 0) / scored.length : null, bias = scored.length ? scored.reduce((x, r) => x + r.v - r.m, 0) / scored.length : null;
+  const rows = all.filter(r => r.src === 'reading').slice(-12).reverse();
+  const when = r => dateFmt(new Date(r.t).toISOString().slice(0, 10), { weekday: 'short', month: 'short', day: 'numeric' }) + ' ' + new Date(r.t).toISOString().slice(11, 16);
+  const html = (rows.length ? '<div class="tablewrap"><table><thead><tr><th>Your stairs readings</th><th class="r">Steps clear</th><th class="r">Formula</th><th class="r">Difference</th><th></th></tr></thead><tbody>' +
+    rows.map(r => '<tr><td>' + when(r) + '</td><td class="r"><b>' + fmtQ(r.v) + '</b></td><td class="r">' + (r.m !== null ? fmt(r.m, 1) : '–') + '</td><td class="r">' + (r.m !== null ? sgn(r.v - r.m, 1) : 'no gauge data') + '</td><td>' + (r.legacy ? '' : '<button type="button" class="small" data-sdel="' + r.date + '|' + r.tm + '" aria-label="Delete the reading of ' + esc(when(r)) + '">' + (st.sArm === r.date + '|' + r.tm ? 'Tap again to delete' : 'Delete') + '</button>') + '</td></tr>').join('') + '</tbody></table></div>' : '<p class="tiny">No readings entered yet. The chart uses the 10 calibration photos until you add some.</p>') +
+    (mae !== null ? '<p class="tiny">Formula check, last ' + scored.length + ' photos and readings: average miss ' + fmt(mae, 2) + ' step, bias ' + sgn(bias, 2) + ' (above zero: more steps clear than the formula says). ' + (mae > 0.5 ? '<b>Over half a step: ask Claude to refit the formula.</b>' : 'Under half a step: the formula holds.') + '</p>' : '');
+  if (html !== st.sHtml) { st.sHtml = html; el.innerHTML = html }
+}
 function stamp(x) { x = x ? String(x).slice(0, 16) : ''; return /^\d{4}-\d\d-\d\dT\d\d:\d\d/.test(x) ? dateFmt(x.slice(0, 10), { month: 'short', day: 'numeric' }) + ', ' + x.slice(11, 16) : '' }
 function renderStamps(doc) {
   const a = stamp(doc && doc.auto && doc.auto.fetchedAt), g = stamp(doc && doc.gauge && doc.gauge.fetchedAt);
@@ -1230,12 +1544,15 @@ function refresh() {
     const k = el.dataset.k, lock = (LOCKED.has(k) && has(o.auto[k])) || (k === 'rainNt' && o.rainNtObs);
     if (el.tagName === 'SELECT' || el.type === 'checkbox') el.disabled = lock; else el.readOnly = lock;
     el.classList.toggle('locked', lock);
-    if (el.dataset.t === 'tx') setVal(el, o.tx[k]); else setVal(el, k === 'rainNt' ? o.rainNt : o.get(k));
+    if (el.dataset.t === 'tx') setVal(el, o.tx[k]); else setVal(el, k === 'rainNt' ? o.rainNt : /^cloud(AM|PM|Nt)$/.test(k) ? r10(o.get(k)) : o.get(k));
   });
   { const lab = { rainNt: 'Rain, night 00–06', rainAM: 'Rain, AM 06–12', rainPM: 'Rain, PM 12–18', rainEve: 'Rain, evening 18–24' };
     const fx = document.querySelectorAll('#g_fx .fields > label'); fx.forEach((l, i) => { l.style.order = i * 10 });
     const slots = o.blocks.map(b => { const el = $('f_' + b.k); return el ? el.closest('label') : null }), base = Math.min(...slots.filter(Boolean).map(l => +l.style.order));
     o.blocks.forEach((b, i) => { const l = slots[i]; if (!l) return; l.style.order = base + i; const sp = l.querySelector('.lab > span'); if (sp && sp.firstChild) sp.firstChild.textContent = lab[b.k] + (b.date !== o.date ? ', ' + dateFmt(b.date, { weekday: 'short', month: 'short', day: 'numeric' }) : '') + ' ' }) }
+  { const lab = { cloudAM: 'Cloud cover, AM 06–12', cloudPM: 'Cloud cover, PM 12–18', cloudNt: 'Cloud cover, night 18–06' }, cb = cloudBlocks(o);
+    const slots = cb.map(b => { const el = $('f_' + b.k); return el ? el.closest('label') : null }), base = Math.min(...slots.filter(Boolean).map(l => +l.style.order));
+    cb.forEach((b, i) => { const l = slots[i]; if (!l) return; l.style.order = base + i; const sp = l.querySelector('.lab > span'); if (sp && sp.firstChild) sp.firstChild.textContent = lab[b.k] + (b.date !== o.date ? ', ' + dateFmt(b.date, { weekday: 'short', month: 'short', day: 'numeric' }) : b.k === 'cloudNt' ? ', tonight' : '') + ' ' }) }
   document.querySelectorAll('[data-tag]').forEach(el => { const k = el.dataset.tag; let s = (k in o.txSrc) ? o.txSrc[k] : o.src(k); if (s === 'edited' && !(k in o.txSrc) && !has(o.auto[k])) s = ''; if (k === 'rainNt' && o.rainNtObs) s = 'observed'; el.textContent = s; el.dataset.s = s });
   document.querySelectorAll('[data-reset]').forEach(b => { b.hidden = o.txSrc[b.dataset.reset] !== 'edited' });
   const oo = $('f_riverOutlook').options[0]; oo.textContent = 'Auto' + (o.sugOutlook ? ': ' + o.sugOutlook : '');
@@ -1246,28 +1563,30 @@ function refresh() {
   // heat tiles
   const h = o.heat, T = (l, v, u, n) => '<div class="tile"><span>' + l + '</span><b>' + v + (u ? ' <small>' + u + '</small>' : '') + '</b><em>' + n + '</em></div>';
   $('tiles').innerHTML = h
-    ? T('Humidex', fmt(h.hx, 0), '', hxCat(h.hx)) + T('Wet-bulb', fmt(h.tw, 1), '°C', 'at peak heat') + T('Dew point', fmt(h.td, 1), '°C', 'RH ' + fmt(h.rh, 0) + '%') + T('WBGT', fmt(h.wbSun, 0) + ' / ' + fmt(h.wbShade, 0), '°C', 'full sun / shade' + (o.wb ? ', peak ' + o.wb.at : '') + '')
-    : T('Humidex', '–', '', 'needs max temp') + T('Wet-bulb', '–', '°C', 'and humidity') + T('Dew point', '–', '°C', '') + T('WBGT est.', '–', '°C', 'shade / full sun');
+    ? T('Humidex', fmt(h.hx, 0), '', hxCat(h.hx)) + T('Wet-bulb', fmt(h.tw, 1), '°C', 'at peak heat') + T('Humidity', fmt(h.rh, 0), '%', 'dew point ' + fmt(h.td, 1) + ' °C') + T('WBGT', fmt(h.wbSun, 0) + ' / ' + fmt(h.wbShade, 0), '°C', 'full sun / shade' + (o.wb ? ', peak ' + o.wb.at : '') + '')
+    : T('Humidex', '–', '', 'needs max temp') + T('Wet-bulb', '–', '°C', 'and humidity') + T('Humidity', '–', '%', 'dew point') + T('WBGT est.', '–', '°C', 'shade / full sun');
 
   // stations and five-day outlook
   const gg = o.gauge, cell = x => isNum(x) ? fmt(x) : '–';
   $('stations').innerHTML = (st.gaugeMsg ? '<p class="msg"' + (st.gaugeErr ? ' data-kind="err"' : '') + ' role="status">' + esc(st.gaugeMsg) + '</p>' : '') + (st.fcMsg ? '<p class="msg"' + (st.fcErr ? ' data-kind="err"' : '') + ' role="status">' + esc(st.fcMsg) + '</p>' : '') + (gg && Array.isArray(gg.levels) && gg.levels.length
-    ? '<div class="tablewrap"><table><thead><tr><th>Level station</th><th class="r">Now</th><th class="r">At</th><th class="r">3 h</th><th class="r">24 h</th><th>Trend</th></tr></thead><tbody>' +
-      gg.levels.map(s => '<tr><td>' + esc(s.name) + ' <span class="tiny">' + esc(s.code) + '</span></td><td class="r">' + fmt(s.now, 2) + ' m</td><td class="r">' + esc(s.at) + '</td><td class="r">' + (isNum(s.ch3) ? sgn(s.ch3) : '–') + '</td><td class="r">' + (isNum(s.ch24) ? sgn(s.ch24) : '–') + '</td><td>' + (isNum(s.ch3) ? trendWord(s.ch3 / 3) : '–') + '</td></tr>').join('') + '</tbody></table></div>' +
-      (Array.isArray(gg.rain) && gg.rain.length ? '<div class="tablewrap"><table><thead><tr><th>Rain station</th><th class="r">6 h</th><th class="r">12 h</th><th class="r">24 h</th><th class="r">72 h</th><th class="r">To</th></tr></thead><tbody>' +
-      gg.rain.filter(r => RIVER_RAIN.indexOf(r.code) >= 0).map(r => '<tr><td>' + esc(r.name) + ' <span class="tiny">' + esc(r.code) + '</span></td><td class="r">' + cell(r.r6) + '</td><td class="r">' + cell(r.r12) + '</td><td class="r">' + cell(r.r24) + '</td><td class="r">' + cell(r.r72) + '</td><td class="r">' + esc(r.upTo || '') + '</td></tr>').join('') + '</tbody></table></div>' : '') +
+    ? '<div class="tablewrap"><table><thead><tr><th>Level station</th><th class="r">At</th><th class="r">Now</th><th class="r">3 h</th><th class="r">24 h</th><th>Trend</th></tr></thead><tbody>' +
+      gg.levels.map(s => '<tr><td>' + esc(s.name) + ' <span class="tiny">' + esc(s.code) + '</span></td><td class="r">' + esc(s.at) + '</td><td class="r">' + fmt(s.now, 2) + ' m</td><td class="r">' + (isNum(s.ch3) ? sgn(s.ch3) : '–') + '</td><td class="r">' + (isNum(s.ch24) ? sgn(s.ch24) : '–') + '</td><td>' + (isNum(s.ch3) ? trendWord(s.ch3 / 3) : '–') + '</td></tr>').join('') + '</tbody></table></div>' +
+      (Array.isArray(gg.rain) && gg.rain.length ? '<div class="tablewrap"><table><thead><tr><th>Rain station</th><th class="r">At</th><th class="r">6 h</th><th class="r">12 h</th><th class="r">24 h</th><th class="r">72 h</th></tr></thead><tbody>' +
+      gg.rain.filter(r => RIVER_RAIN.indexOf(r.code) >= 0).map(r => '<tr><td>' + esc(r.name) + ' <span class="tiny">' + esc(r.code) + '</span></td><td class="r">' + esc(r.upTo || '') + '</td><td class="r">' + cell(r.r6) + '</td><td class="r">' + cell(r.r12) + '</td><td class="r">' + cell(r.r24) + '</td><td class="r">' + cell(r.r72) + '</td></tr>').join('') + '</tbody></table></div>' : '') +
       '<p class="tiny">Read ' + esc(String(gg.fetchedAt || '').replace('T', ' ')) + (gg.errors && gg.errors.length ? '. Not read: ' + esc(gg.errors.join('; ')) : '') + '. Rain in mm; levels in m.</p>' + stationMap(gg)
     : '<p class="sub">No station readings for this date yet: the INAMHI Visor did not answer. Press Refresh to try again.' + (o.lastObs ? ' The river outlook uses the last stored reading, ' + fmt(o.lastObs.v, 2) + ' m on ' + o.lastObs.label + '.' : '') + '</p>' + stationMap(null));
   checkGauge(gg); checkForecast(doc);
   const sd = st.cfg.shootDate || '';
   $('o5').innerHTML = o.o5
-    ? '<div class="tablewrap"><table><thead><tr><th>Day, 05:00 to 05:00</th><th class="r">Likely</th><th class="r">Range</th><th class="r">Rain forecast</th><th>Note</th></tr></thead><tbody>' +
-      o.o5.slice(1).map(r => '<tr><td>' + dateFmt(r.date, { weekday: 'short', month: 'short', day: 'numeric' }) + '</td><td class="r"><b>' + fmt(r.mid, 1) + ' m</b></td><td class="r">' + fmt(r.lo, 1) + '–' + fmt(r.hi, 1) + ' m</td><td class="r">' + (r.rain !== null ? r.rain + ' mm' : '–') + '</td><td>' + [r.hi > RIVER_HIGH ? 'high water possible' : '', r.lo < RIVER_LOW ? 'low water possible' : ''].filter(Boolean).join(', ') + '</td></tr>').join('') + '</tbody></table></div>' +
+    ? '<div class="tablewrap"><table><thead><tr><th>Day, 05:00 to 05:00</th><th class="r">Likely</th><th class="r">Range</th><th class="r">Rain forecast</th><th class="r">San Sebastián H1134</th><th>Note</th></tr></thead><tbody>' +
+      o.o5.slice(1).map(r => '<tr><td>' + dateFmt(r.date, { weekday: 'short', month: 'short', day: 'numeric' }) + '</td><td class="r"><b>' + fmt(r.mid, 1) + ' m</b></td><td class="r">' + fmt(r.lo, 1) + '–' + fmt(r.hi, 1) + ' m</td><td class="r">' + (r.rain !== null ? r.rain + ' mm' : '–') + '</td><td class="r">' + ((q => q ? fmt(q.mid, 2) + ' m <span class="tiny">(' + fmt(q.lo, 2) + '–' + fmt(q.hi, 2) + ')</span>' : '–')(o.o34 ? o.o34.find(x => x.date === r.date) : null)) + '</td><td>' + [r.hi > RIVER_HIGH ? 'high water possible' : '', r.lo < RIVER_LOW ? 'low water possible' : ''].filter(Boolean).join(', ') + '</td></tr>').join('') + '</tbody></table></div>' +
       ''
     : '<p class="sub">Enter or gather the level at Coca to see the five-day range.</p>';
   if (document.activeElement !== $('cShoot')) $('cShoot').value = sd;
-  $('o5chart').innerHTML = o.o5 ? o5Chart(o, sd, Object.assign({ fc: st.fcList || [] }, gaugeHist())) + '<p class="tiny">Past forecasts of the likely level, for the days already observed: ● 24 h ahead · ■ 48 h · ▲ 72 h · ▬ 96 h.</p>' : '';
+  $('o5chart').innerHTML = o.o5 ? o5Chart(o, sd, Object.assign({ fc: st.fcList || [] }, gaugeHist())) + '<p class="tiny">Tap a day on the chart (or hover with a mouse) to read its values. Past forecasts of the likely level, for the days already observed: ● 24 h ahead · ■ 48 h · ▲ 72 h · ▬ 96 h.</p>' : '';
+  $('stairsBox').innerHTML = o.o5 ? '<div class="stairs">' + stairsChart(o, gaugeHist()) + '<p class="tiny">Provisional: worked out from H1135 and H1134 3 hours earlier and their five-day forecasts, fitted to your 10 dated photos from 8 to 14 Oct (◇ photos, ◆ readings); typical error about half a step, each step ≈ 17 cm of river at Coca. Add a stairs reading below and the estimate and forecast are corrected from the newest one.</p></div>' : '';
   $('o5skill').innerHTML = skillHtml();
+  renderStairsList();
   maybeSaveForecast();
   {
     let li = '';
@@ -1293,7 +1612,7 @@ function refresh() {
 
   // levels
   const ld = levelDetail(o);
-  $('levels').innerHTML = (a => (a.splice(3, 0, wbTile(o)), a.splice(1, 0, obsRainTile(o)), a))([['Rain', 'rain'], ['Lightning', 'lightning'], ['Heat', 'heat'], ['River', 'river'], ['Wind', 'wind']].map(p => '<div class="lv" data-level="' + o.levels[p[1]] + '"><span>' + p[0] + '</span><b>' + LV[o.levels[p[1]]] + (p[1] === 'wind' ? ' <span class="wdir" title="' + (ld.wind.dir ? 'Wind from ' + ld.wind.dir : 'Wind direction not gathered') + '">· ' + (ld.wind.dir || '–') + '</span>' : '') + '</b>' + (ld[p[1]].v ? '<i>' + esc(ld[p[1]].v) + '</i>' : '') + (ld[p[1]].b ? '<i class="band">' + esc(ld[p[1]].b) + '</i>' : '') + '</div>')).join('') + (() => { const c = cloudInfo(o); return '<div class="lv lvinfo"><span>Cloud</span><b>' + (c ? cap(c.word) : 'Not gathered') + '</b>' + (c ? '<i>' + [c.am !== null ? 'AM ' + fmt(c.am, 0) + '%' : '', c.pm !== null ? 'PM ' + fmt(c.pm, 0) + '%' : ''].filter(Boolean).join(', ') + '</i><i class="band">sky covered, 06–18</i>' : '') + '</div>' })();
+  $('levels').innerHTML = (a => (a.splice(3, 0, wbTile(o)), a.splice(1, 0, obsRainTile(o)), a))([['Rain', 'rain'], ['Lightning', 'lightning'], ['Heat', 'heat'], ['River', 'river'], ['Wind', 'wind']].map(p => '<div class="lv" data-level="' + o.levels[p[1]] + '"><span>' + p[0] + '</span><b>' + LV[o.levels[p[1]]] + (p[1] === 'wind' ? ' <span class="wdir" title="' + (ld.wind.dir ? 'Wind from ' + ld.wind.dir : 'Wind direction not gathered') + '">· ' + (ld.wind.dir || '–') + '</span>' : '') + '</b>' + (ld[p[1]].v ? '<i>' + esc(ld[p[1]].v) + '</i>' : '') + (ld[p[1]].b ? '<i class="band">' + esc(ld[p[1]].b) + '</i>' : '') + '</div>')).join('') + (() => { const c = cloudInfo(o); return '<div class="lv lvinfo"><span>Cloud</span><b>' + (c ? cap(c.word) : 'Not gathered') + '</b>' + (c ? '<i>' + esc(c.text(', ', o)) + '</i><i class="band">sky covered, next 24 h</i>' : '') + '</div>' })();
 
   // gaps + status
   const gaps = [];
@@ -1403,10 +1722,14 @@ function wire() {
   document.addEventListener('focusout', () => setTimeout(refresh, 0));
   form.addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.q !== undefined) { document.querySelectorAll('#stairsIn [data-q]').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false')); stairsPreview(); return }
+    if (b.id === 'sAdd') { stairsAdd(); return }
+    if (b.dataset.sdel) { const [d, t] = b.dataset.sdel.split('|'); stairsDel(d, t); return }
     if (b.dataset.reset) { queue(b.dataset.reset, null); refresh() }
     else if (b.dataset.mdel !== undefined) { const rows = modelsFromDom(); rows.splice(Number(b.dataset.mdel), 1); queue('models', rows.length ? rows : [{ label: '' }]); refresh() }
     else if (b.id === 'mAdd') { const rows = modelsFromDom(); rows.push({ label: '', tmax: null, rain: null, note: '' }); queue('models', rows); b.blur(); refresh(); const ins = document.querySelectorAll('#models [data-c="label"]'); ins[ins.length - 1].focus() }
   });
+  $('sBoards').addEventListener('input', () => { $('sBoards').removeAttribute('aria-invalid'); stairsPreview() });
   $('gaps').addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (!b) return; const el = b.dataset.go === 'models' ? document.querySelector('#models [data-c="tmax"]') : $('f_' + b.dataset.go); if (el) { el.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); el.focus({ preventScroll: true }) } });
   $('log').addEventListener('click', e => { const tr = e.target.closest('tr[data-date]'); if (tr) { setDate(tr.dataset.date); scrollTo({ top: 0 }) } });
   { let rw = innerWidth, rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (innerWidth !== rw) { rw = innerWidth; refresh() } }, 200) }) }
@@ -1462,6 +1785,7 @@ function checkGauge(gg) {
 }
 async function refreshStations() {
   const b = $('dRefresh');
+  { const n = ecNow(); $('sDate').value = n.date; $('sTime').value = n.hm }
   try { await flush() } catch (e) {}
   if (!st.mcp) { try { sessionStorage.setItem('naaDate', st.date) } catch (e) {} location.reload(); return }
   if (st.fireAt && Date.now() - st.fireAt < STATION_GAP) { gaugeMsg('A station reading is already running. It appears here by itself in a few minutes.'); return }
@@ -1496,7 +1820,7 @@ function loadScript(src, ready) {
   return new Promise((res, rej) => { const sc = document.createElement('script'); sc.src = src; sc.onload = () => ready() ? res() : rej(new Error('the snapshot library did not load')); sc.onerror = () => rej(new Error('the snapshot library could not be loaded')); document.head.appendChild(sc) });
 }
 async function start() {
-  buildForm(); wire(); fillCfg(); refresh();
+  buildForm(); wire(); fillCfg(); stairsDefaults(); refresh();
   const cl = window.claude;
   const db = cl && cl.use ? await cl.use('db') : null;
   st.db = db;
@@ -1539,7 +1863,7 @@ async function start() {
           if (i) pdf.addPage([pw, h], 'portrait');
           pdf.addImage(part.toDataURL('image/jpeg', 0.86), 'JPEG', 0, 0, pw, h);
         }
-        await dl.save({ filename: 'napo-basin-assessment-' + st.date + '.pdf', data: pdf.output('arraybuffer') });
+        await dl.save({ filename: st.date + '_Napo Basin Daily Assessment.pdf', data: pdf.output('arraybuffer') });
         m.textContent = 'PDF saved: a full snapshot of the tool, one long page that scrolls on a phone, tablet or computer.';
       } catch (e) { if (e && e.code === 'declined') m.textContent = ''; else { m.textContent = 'PDF not saved: ' + ((e && e.message) || 'export is unavailable in this view') + '.'; m.dataset.kind = 'err' } }
       finally {
@@ -1552,8 +1876,25 @@ async function start() {
   if (dl) { const b = $('bCsv'); b.hidden = false; b.onclick = async () => { const data = csv(); if (!data) return; try { await dl.save({ filename: 'napo-basin-assessment-record.csv', data }) } catch (e) { if (e && e.code !== 'declined') $('bMsg').textContent = 'Export not available in this view.' } } }
 }
 start();
+// Tap a day on the charts, or a pin on the map, to read its values (hover tooltips do not exist on phones and tablets)
+(function () {
+  let tip = null;
+  const hide = () => { if (tip) { tip.remove(); tip = null } document.querySelectorAll('svg .sel').forEach(x => x.classList.remove('sel')) };
+  document.addEventListener('click', e => {
+    let el = e.target; if (!el || !el.closest || !el.closest('svg')) { hide(); return }
+    while (el && el.tagName && el.tagName.toLowerCase() !== 'svg' && !(el.querySelector && el.querySelector(':scope > title'))) el = el.parentNode;
+    const t = el && el.querySelector ? el.querySelector(':scope > title') : null; if (!t || el.tagName.toLowerCase() === 'svg') { hide(); return }
+    hide(); el.classList.add('sel');
+    const parts = t.textContent.split('\n'), head = parts.shift();
+    tip = document.createElement('div'); tip.className = 'svgtip'; tip.setAttribute('role', 'status');
+    tip.innerHTML = '<b>' + esc(head) + '</b>' + parts.map(x => esc(x)).join('<br>');
+    document.body.appendChild(tip);
+    const w = tip.offsetWidth, x = Math.min(Math.max(8, e.pageX - w / 2), document.documentElement.clientWidth - w - 8);
+    tip.style.left = x + 'px'; tip.style.top = (e.pageY + 16) + 'px';
+  });
+  window.addEventListener('scroll', () => { if (tip) hide() }, { passive: true });
+})();
 </script>
-
 
 </body>
 </html>
