@@ -169,14 +169,16 @@ async function gather(now, ua, fresh) {
   return { fetchedAt: ecu(now).replace(' ', 'T'), by: 'standalone gathering', sources, gaps, vals };
 }
 
-export default async req => {
+export default async (req, context) => {
   const url = new URL(req.url), fresh = url.searchParams.has('fresh'), now = Date.now();
+  // a new deploy reads the forecasts afresh instead of serving what the previous version stored
+  const dep = (context && context.deploy && context.deploy.id) || '';
   const ua = 'naa-field-assessment/1.0 ' + url.origin;
   const c = await cacheGet('weather');
-  if (c && ecuDate(c.ts) === ecuDate(now) && (now - c.ts < (fresh ? 5 : 45) * 60e3)) return json(Object.assign({ cached: true }, c.data));
+  if (c && (c.dep || '') === dep && ecuDate(c.ts) === ecuDate(now) && (now - c.ts < (fresh ? 5 : 45) * 60e3)) return json(Object.assign({ cached: true }, c.data));
   try {
     const auto = await gather(now, ua, fresh), data = { auto };
-    if (auto.sources.length) await cachePut('weather', { ts: now, data });
+    if (auto.sources.length) await cachePut('weather', { ts: now, dep, data });
     else if (c) return json(Object.assign({ cached: true, stale: true }, c.data));
     return json(data);
   } catch (e) { return c ? json(Object.assign({ cached: true, stale: true }, c.data)) : json({ error: String(e && e.message || e) }, 502) }
