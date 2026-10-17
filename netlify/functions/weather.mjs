@@ -2,6 +2,7 @@
 // model comparison and gusts, 7Timer (GFS) for instability, Coca airport METAR, GEOGLOWS modelled flow.
 // Produces the same "auto" object the Claude version's 05:10 task writes. Local time = UTC-5.
 import { H, DAY, ecu, ecuDate, r1, isNum, fetchJSON, cacheGet, cachePut, json } from '../lib/common.mjs';
+import { readAdvisory, ADV_URL } from '../lib/advisory.mjs';
 
 const COCA = [-0.4628, -76.9872];
 const UP = { tena: [-0.99, -77.81], jatunyacu: [-1.10, -78.05], elChaco: [-0.34, -77.81], loreto: [-0.69, -77.31] };
@@ -30,7 +31,7 @@ function timingNote(rows, L0, from) {
   return (tot < 5 ? 'light rain, mostly ' : tot < 15 ? 'showers, mostly ' : 'rain, heaviest ') + (top[0] === 'overnight' ? 'overnight' : 'in the ' + top[0]);
 }
 
-async function gather(now, ua) {
+async function gather(now, ua, fresh) {
   const D = ecuDate(now), L0 = Date.parse(D + 'T05:00:00Z'), hourNow = Math.floor(now / H) * H, gaps = [], sources = [], vals = {};
   const met = (lat, lon) => fetchJSON('https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=' + lat + '&lon=' + lon, { headers: { 'User-Agent': ua } });
   const om = m => fetchJSON('https://api.open-meteo.com/v1/forecast?latitude=' + COCA[0] + '&longitude=' + COCA[1] + '&hourly=temperature_2m,relative_humidity_2m,precipitation,wind_gusts_10m,weather_code&models=' + m + '&timezone=GMT&forecast_days=3');
@@ -58,15 +59,7 @@ async function gather(now, ua) {
       const off = L0 + b * H - now >= 2 * H ? 0 : DAY, s0 = L0 + a * H + off, e0 = L0 + b * H + off;
       vals[k] = sumP(C, s0, e0, hourNow); vals.rainBlockDates[k] = ecuDate(s0 + H);
     });
-    // rolling cloud blocks, like the rain blocks: AM 06-12, PM 12-18, night 18-06; each its next occurrence (the current one if at least 2 h remain);
-    // cloudBlockDates gives the local date each block starts (the night: the evening it starts)
-    vals.cloudBlockDates = {};
-    [['cloudAM', 6, 12], ['cloudPM', 12, 18], ['cloudNt', 18, 30]].forEach(([k, a, b]) => {
-      const off = [-DAY, 0, DAY].find(o => L0 + b * H + o - now >= 2 * H), s0 = L0 + a * H + off, e0 = L0 + b * H + off;
-      const v = C.filter(r => r.t >= Math.max(s0, hourNow) && r.t < e0 && isNum(r.cl)).map(r => r.cl);
-      if (v.length) { vals[k] = Math.round(v.reduce((x, y) => x + y, 0) / v.length); vals.cloudBlockDates[k] = ecuDate(s0 + H) }
-    });
-    if (!Object.keys(vals.cloudBlockDates).length) delete vals.cloudBlockDates;
+    [['cloudAM', 6, 12], ['cloudPM', 12, 18]].forEach(([k, a, b]) => { const v = C.filter(r => r.t >= Math.max(L0 + a * H, hourNow) && r.t < L0 + b * H && isNum(r.cl)).map(r => r.cl); if (v.length) vals[k] = Math.round(v.reduce((x, y) => x + y, 0) / v.length) });
     vals.hourly = C.filter(r => r.t >= Math.max(day[0], hourNow) && r.t < day[1] && !r.coarse).map(r => ({ ts: new Date(r.t).toISOString().slice(0, 19) + 'Z', T: r.T, RH: r.RH, p: r.ps, ws: r.ws, cl: r.cl }));
     if (!vals.hourly.length) delete vals.hourly;
     const nextDay = C.filter(r => r.t >= Math.max(day[0], hourNow) && r.t < day[1]), wwin = nextDay.length ? nextDay : C.filter(r => r.t >= hourNow && r.t < hourNow + 12 * H);
@@ -167,6 +160,12 @@ async function gather(now, ua) {
     }
   } catch (e) {}
 
+  // official INAMHI advisory (PDF at a fixed address)
+  try {
+    const adv = await readAdvisory(now, fresh);
+    Object.assign(vals, adv.vals);
+    sources.push({ name: 'INAMHI advisory' + (adv.num ? ' No. ' + adv.num : '') + (adv.active ? ' (in force for Orellana/Napo)' : adv.inForce ? ' (in force, Orellana and Napo not named)' : ' (none in force)'), url: ADV_URL });
+  } catch (e) { gaps.push('INAMHI advisory not read: check inamhi.gob.ec') }
   return { fetchedAt: ecu(now).replace(' ', 'T'), by: 'standalone gathering', sources, gaps, vals };
 }
 
@@ -176,7 +175,7 @@ export default async req => {
   const c = await cacheGet('weather');
   if (c && ecuDate(c.ts) === ecuDate(now) && (now - c.ts < (fresh ? 5 : 45) * 60e3)) return json(Object.assign({ cached: true }, c.data));
   try {
-    const auto = await gather(now, ua), data = { auto };
+    const auto = await gather(now, ua, fresh), data = { auto };
     if (auto.sources.length) await cachePut('weather', { ts: now, data });
     else if (c) return json(Object.assign({ cached: true, stale: true }, c.data));
     return json(data);
