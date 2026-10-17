@@ -1,4 +1,4 @@
-# Napo-bassin-weather-hazard-assessment# NAA Daily Field Assessment — standalone version
+# NAA Daily Field Assessment — standalone version
 
 Napo Basin daily weather and hazard assessment for Coca HQ, the Napo River corridor and Yarina FOB.
 Runs on Netlify with no Claude account and no computer left on.
