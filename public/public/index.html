@@ -10,7 +10,6 @@
 </head>
 <body>
 
-
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600;700&display=swap">
 <style>
 /* Layout: gaps and hazard levels first, then the inputs on the left with the finished brief text pinned on the right; the record log below. Same tokens as Napo Reach Watch. */
@@ -272,7 +271,7 @@ section { display: flex; flex-direction: column; gap: 10px; min-width: 0 }
           <li>Export PDF produces an A4 report of the day on screen: hazard levels, a table of the numbers, then the brief text. Emoji are left out of the PDF because its built-in fonts have none. A draft is marked as a draft.</li>
           <li>The issue time fills itself with the time you open the page (Ecuador time). Type over it to change it; it is fixed when you mark the brief as issued.</li>
           <li>Every level and every line of wording can be overridden. Values tagged "auto" came from the morning gathering; "edited" are yours.</li>
-          <li>Gathered sources, read each time the page opens and when you press Refresh: MET Norway (ECMWF-based) hourly forecasts at Coca and the four upstream points; Open-Meteo for the model comparison (ECMWF, GFS, UKMO, ICON) and gusts; 7Timer (GFS-based) for instability; Coca airport METAR; GEOGLOWS modelled flow. Official advisories are not searched automatically in this version: check INAMHI and SNGR and tick the box. The day's brief is shared: entries, edits and Issue appear for everyone using this site within about 30 seconds, and if two people change the same field the last save wins. Live readings are read by each device; the launch day and header settings stay in this browser; each day's river forecast is kept for everyone.</li>
+          <li>Gathered sources, read each time the page opens and when you press Refresh: MET Norway (ECMWF-based) hourly forecasts at Coca and the four upstream points; Open-Meteo for the model comparison (ECMWF, GFS, UKMO, ICON) and gusts; 7Timer (GFS-based) for instability; Coca airport METAR; GEOGLOWS modelled flow. The official INAMHI advisory is read automatically from its bulletin (inamhi.gob.ec/pronostico/advertencia.pdf) and marked in force when it covers Orellana or Napo; SNGR alerts are not read, so check them yourself. The day's brief is shared: entries, edits and Issue appear for everyone using this site within about 30 seconds, and if two people change the same field the last save wins. Live readings are read by each device; the launch day and header settings stay in this browser; each day's river forecast is kept for everyone.</li>
         </ul>
       </div>
     </details>
@@ -614,7 +613,8 @@ function compute(date, doc, loc, prevDoc) {
   return o;
 }
 
-// Five-day range for the Napo at Coca town (provisional, from the 2 to 11 Oct 2026 gauge record).
+// Five-day range for the Napo at Coca town (provisional, from the 2 to 11 Oct 2026 gauge record; refitted 16 Oct on 2 to 16 Oct:
+// recession 0.25 m/day, likely line = 0.8 x recession plus 0.4 x the rain-driven rise, half of it carried to the next day).
 // Low path: recession only, 0.3 m/day, slower near 4.5 m; the day after a pulse 0.6 x the rise.
 // High path: slow recession plus a rise sized by the day's forecast rain (largest of the upstream points and Coca town),
 // never less than 0.6 m above the low path, because rises of about 0.5 m came twice in ten days with no forecast or gauge signal.
@@ -629,7 +629,7 @@ function outlook5(o) {
   for (let k = 0; k <= 5; k++) {
     const date = addDays(o.date, k), d = by[date];
     const r = d ? Math.max(isNum(d.up) ? d.up : 0, isNum(d.coca) ? d.coca : 0) : null;
-    let fall = k === 0 ? (pulse ? 0.6 * c : rising ? 0 : 0.2) : (k === 1 && pulse ? 0.4 : 0.3);
+    let fall = k === 0 ? (pulse ? 0.6 * c : rising ? 0 : 0.2) : (k === 1 && pulse ? 0.4 : 0.25);
     fall *= Math.min(1.2, Math.max(0.2, lo - 4.2));
     lo -= fall;
     base -= k === 0 ? (pulse ? 0.3 * c : 0) : 0.1;
@@ -637,10 +637,10 @@ function outlook5(o) {
     const hi = Math.max(base + rise, lo + 0.6);
     base = hi - 0.7 * rise;
     // most likely: slower recession than the low path plus half the rain-driven rise, kept inside the range
-    const mr = r === null ? 0.15 : r < 5 ? 0 : 0.5 * riseFor(r);
-    mb -= 0.6 * fall;
+    const mr = r === null ? 0.15 : r < 5 ? 0 : 0.4 * riseFor(r);
+    mb -= 0.8 * fall;
     let mid = Math.min(hi, Math.max(lo, mb + mr)); if (k === 0 && rising) mid = Math.max(mid, Math.min(hi, L + 0.1));
-    mb = mid - 0.7 * mr;
+    mb = mid - 0.5 * mr;
     const cc = k > 0 && O5_CORR && isNum(O5_CORR[k]) ? O5_CORR[k] : 0;
     rows.push({ date, lo: Math.round((lo + cc) * 10) / 10, hi: Math.round((hi + cc) * 10) / 10, mid: Math.round((mid + cc) * 10) / 10, midRaw: Math.round(mid * 100) / 100, corr: cc, rain: r === null ? null : Math.round(r) });
   }
