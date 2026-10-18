@@ -59,7 +59,13 @@ async function gather(now, ua, fresh) {
       const off = L0 + b * H - now >= 2 * H ? 0 : DAY, s0 = L0 + a * H + off, e0 = L0 + b * H + off;
       vals[k] = sumP(C, s0, e0, hourNow); vals.rainBlockDates[k] = ecuDate(s0 + H);
     });
-    [['cloudAM', 6, 12], ['cloudPM', 12, 18]].forEach(([k, a, b]) => { const v = C.filter(r => r.t >= Math.max(L0 + a * H, hourNow) && r.t < L0 + b * H && isNum(r.cl)).map(r => r.cl); if (v.length) vals[k] = Math.round(v.reduce((x, y) => x + y, 0) / v.length) });
+    // cloud cover in three rolling blocks, like the rain blocks: AM 06-12, PM 12-18, night 18-06, each its next occurrence
+    vals.cloudBlockDates = {};
+    [['cloudAM', 6, 12], ['cloudPM', 12, 18], ['cloudNt', 18, 30]].forEach(([k, a, b]) => {
+      const off = L0 + b * H - now >= 2 * H ? 0 : DAY, s0 = L0 + a * H + off, e0 = L0 + b * H + off;
+      const v = C.filter(r => r.t >= Math.max(s0, hourNow) && r.t < e0 && isNum(r.cl)).map(r => r.cl);
+      if (v.length) { vals[k] = Math.round(v.reduce((x, y) => x + y, 0) / v.length); vals.cloudBlockDates[k] = ecuDate(s0 + H) }
+    });
     vals.hourly = C.filter(r => r.t >= Math.max(day[0], hourNow) && r.t < day[1] && !r.coarse).map(r => ({ ts: new Date(r.t).toISOString().slice(0, 19) + 'Z', T: r.T, RH: r.RH, p: r.ps, ws: r.ws, cl: r.cl }));
     if (!vals.hourly.length) delete vals.hourly;
     const nextDay = C.filter(r => r.t >= Math.max(day[0], hourNow) && r.t < day[1]), wwin = nextDay.length ? nextDay : C.filter(r => r.t >= hourNow && r.t < hourNow + 12 * H);
