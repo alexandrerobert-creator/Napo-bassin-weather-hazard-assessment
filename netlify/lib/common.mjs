@@ -10,8 +10,12 @@ export async function fetchJSON(url, opt = {}, ms = 7000) {
   const c = new AbortController(), t = setTimeout(() => c.abort(), ms);
   try {
     const r = await fetch(url, Object.assign({ signal: c.signal }, opt));
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    return await r.json();
+    if (!r.ok) { let body = ''; try { body = (await r.text()).replace(/\s+/g, ' ').slice(0, 160) } catch (e) {} throw new Error('HTTP ' + r.status + (body ? ' (' + body + ')' : '')) }
+    const text = await r.text();
+    try { return JSON.parse(text) } catch (e) { throw new Error('not JSON: ' + text.replace(/\s+/g, ' ').slice(0, 160)) }
+  } catch (e) {
+    if (e && e.name === 'AbortError') throw new Error('no answer in ' + Math.round(ms / 1000) + ' s');
+    throw e;
   } finally { clearTimeout(t) }
 }
 
