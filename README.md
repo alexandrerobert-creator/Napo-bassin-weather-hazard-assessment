@@ -5,8 +5,9 @@ Runs on Netlify with no Claude account and no computer left on.
 
 ## What runs where
 - `public/index.html` — the tool. Your entries, settings and launch day stay in each person's browser.
-- `netlify/functions/stations.mjs` (`/api/stations`) — reads the INAMHI Visor from Netlify's server: levels at H1135, H1134, H0719, H0728; rain at H1135, M5189, M5187, M5190, M1124, M0008; 9 days of hourly level and rain at H1135; exact station coordinates. `stations-refresh` reads INAMHI every 15 minutes, asking only for the last 2 days and adding them to the stored series. Cached 10 minutes (2 minutes when Refresh is pressed). A station that fails keeps its last reading for up to 12 h, listed in the errors.
-  - `/api/stations?diag=1` shows the last 30 reading runs (which stations answered, errors) and asks INAMHI once per level station right away: open it in a browser when the readings stop.
+- `netlify/functions/stations-refresh.mjs` — the only part that asks INAMHI, every 30 minutes (at :07 and :37): levels at H1135, H1134, H0719, H0728; rain at H1135, M5189, M5187, M5190, M1124, M0008; 9 days of hourly level and rain at H1135; exact station coordinates. Each run asks only for the last 2 days and adds them to the stored series. A station that fails keeps its last reading for up to 12 h, listed in the errors. If INAMHI refuses the site (HTTP 403 `client_blocked`), the run stops at the first refusal and the next attempt waits 2 hours.
+- `netlify/functions/stations.mjs` (`/api/stations`) — gives the page the latest stored reading; it never asks INAMHI itself, so opening the page or pressing Refresh adds no load on INAMHI. Readings older than 12 h are not shown as current.
+  - `/api/stations?diag=1` shows the last 30 reading runs (which stations answered, errors, whether INAMHI is blocking the site). Add `&live=1` to send INAMHI one test request right away.
 - `netlify/functions/weather.mjs` (`/api/weather`) — MET Norway hourly forecasts at Coca and four upstream points (Tena, Jatunyacu, El Chaco, Loreto), Open-Meteo models (ECMWF, GFS, UKMO, ICON), 7Timer, Coca airport METAR, GEOGLOWS. Cached 45 minutes (5 minutes on Refresh).
 - `netlify/functions/shared.mjs` (`/api/shared`) — shared with everyone using the site, in Netlify Blobs: each morning's five-day river forecast (first one of the day is kept) and briefs marked as issued.
 
