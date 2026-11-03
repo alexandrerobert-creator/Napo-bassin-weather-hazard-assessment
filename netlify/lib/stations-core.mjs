@@ -2,6 +2,10 @@
 // Napo at Coca (H1135), hourly level at Coca at San Sebastián (H1134) and hourly rain at the upstream stations.
 // Every 6, 12, 24 and 72 h window, and the 24 h change, ends at the moment of the reading.
 //
+// 3 Nov 2026: INAMHI started refusing this site (HTTP 403 "client_blocked") on 28 Oct. Only the scheduled task asks
+// INAMHI now, every 30 minutes; the page reads the shared cache. When INAMHI refuses, the run stops at once and the
+// next attempt waits 2 hours (see stations-refresh).
+//
 // 2 Nov 2026 rework (INAMHI readings stopped reaching the site):
 // - The hourly series are kept in the shared cache. Each run only asks INAMHI for the last 2 days and merges them in,
 //   instead of asking for 9 to 11 days at every station every 10 minutes. This is far lighter on INAMHI and stays well
@@ -56,7 +60,9 @@ async function pool(tasks, limit, gap) {
   await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, worker));
   return res;
 }
-async function retry(fn, tries, wait, left) { let err; for (let k = 0; k < tries; k++) { try { return await fn() } catch (e) { err = e; if (k < tries - 1 && left() > 12000) await sleep(wait); else break } } throw err }
+// INAMHI refuses a blocked client with HTTP 403 "client_blocked": never retry that, and stop asking for the other stations
+export const isBlocked = e => /HTTP 403|client_blocked/.test(e && e.message || String(e));
+async function retry(fn, tries, wait, left) { let err; for (let k = 0; k < tries; k++) { try { return await fn() } catch (e) { err = e; if (!isBlocked(e) && k < tries - 1 && left() > 12000) await sleep(wait); else break } } throw err }
 
 async function coords() {
   const c = await cacheGet('coords'); if (c && c.H1135) return c;
@@ -78,7 +84,12 @@ export async function read(now, opt = {}) {
   Object.entries(RN).forEach(([code, [, id]]) => { const k = 'rn_' + code, s = stored[k], have = s && s.length && s[s.length - 1][0] > now - 36 * H; jobs.push({ k, code, kind: 'rain', run: () => rain(id, have ? 2 : keepDays(k), now, ms) }) });
   const budget = opt.budget || 25000;
   const left = () => budget - (Date.now() - t1);
-  const res = await pool(jobs.map(j => () => { if (left() < ms) throw new Error('skipped: out of time'); return retry(j.run, tries, 1500, left) }), 2, 250);
+  let blocked = false;
+  const res = await pool(jobs.map(j => async () => {
+    if (blocked) throw new Error('skipped: INAMHI is blocking this site');
+    if (left() < ms) throw new Error('skipped: out of time');
+    try { return await retry(j.run, tries, 1500, left) } catch (e) { if (isBlocked(e)) blocked = true; throw e }
+  }), 2, 250);
   const next = {}, fresh = {};
   jobs.forEach((j, i) => {
     const r = res[i], keep = keepDays(j.k);
@@ -127,29 +138,21 @@ export async function read(now, opt = {}) {
   }
   // run log, newest first, last 30 runs
   const log = (await cacheGet('stations-log')) || [];
-  log.unshift({ at: ecu(Date.now()), by: opt.by || 'page', ok: okCount, of: jobs.length, secs: Math.round((Date.now() - t1) / 100) / 10, errors: out.errors });
+  log.unshift({ at: ecu(Date.now()), ts: Date.now(), by: opt.by || 'schedule', blocked, ok: okCount, of: jobs.length, secs: Math.round((Date.now() - t1) / 100) / 10, errors: out.errors });
   await cachePut('stations-log', log.slice(0, 30));
-  return { gauge: out, history: hist, coords: await coords(), okCount };
+  return { gauge: out, history: hist, coords: okCount ? await coords() : ((await cacheGet('coords')) || {}), okCount, blocked };
 }
 
 // read and store in the shared cache; used by the page request and by the scheduled refresh
 export async function readAndCache(now, opt) {
-  const data = await read(now, opt), ok = data.okCount; delete data.okCount;
+  const data = await read(now, opt), ok = data.okCount, blocked = data.blocked; delete data.okCount; delete data.blocked;
   if (ok && data.gauge.levels.length) await cachePut('stations', { ts: now, data });
-  return Object.assign(data, { okCount: ok });
+  return Object.assign(data, { okCount: ok, blocked });
 }
 
-// one bare request per station, for /api/stations?diag=1: what INAMHI answers right now, and how fast
+// one single request (Napo at Coca level, last day), for /api/stations?diag=1&live=1: what INAMHI answers right now
 export async function diagnose(now) {
-  const rows = [];
-  for (const [code, [, id, table]] of Object.entries(LV)) {
-    const t = Date.now();
-    try { const p = await levels(id, table, 1, now, 8000); rows.push({ code, kind: 'level', ok: true, points: p.length, last: p.length ? ecu(p[p.length - 1][0]) : null, ms: Date.now() - t }) }
-    catch (e) { rows.push({ code, kind: 'level', ok: false, error: e && e.message, ms: Date.now() - t }) }
-    await sleep(250);
-  }
-  const t = Date.now();
-  try { const p = await rain(65024, 1, now, 8000); rows.push({ code: 'H1135', kind: 'rain', ok: true, points: p.length, ms: Date.now() - t }) }
-  catch (e) { rows.push({ code: 'H1135', kind: 'rain', ok: false, error: e && e.message, ms: Date.now() - t }) }
-  return rows;
+  const [, id, table] = LV.H1135, t = Date.now();
+  try { const p = await levels(id, table, 1, now, 8000); return { code: 'H1135', kind: 'level', ok: true, points: p.length, last: p.length ? ecu(p[p.length - 1][0]) : null, ms: Date.now() - t } }
+  catch (e) { return { code: 'H1135', kind: 'level', ok: false, blocked: isBlocked(e), error: e && e.message, ms: Date.now() - t } }
 }
